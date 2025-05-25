@@ -3,7 +3,16 @@
 - Entity User, UserRepository, UserService.
 - Controller AuthController với các endpoint /login, /register.
 - Template Thymeleaf cho login.html và register.html với form Bootstrap.
+
+
 2. Xây dựng giao diện và chức năng quản trị ------------------ 1-2 ngày 
+- Tổng quan
+- Quản lí tài khoản
+- Quản lí sản phẩm
+- Quản lí kho hàng
+- Quản lí đơn hàng
+- Báo cáo thống kê
+
 3. Xây dựng giao diện và chức năng người dùng ---------------- 1-2 ngày
 4. Xử lý lỗi và giao diện lỗi -------------------------------- 1-4 tiếng
 - Sinh code cho GlobalExceptionHandler để xử lý ngoại lệ.
@@ -22,7 +31,7 @@ src
 │   │               ├── controller
 │   │               ├── facade                        // Facade để giao tiếp giữa controller và service
 │   │               ├── model
-│   │               │── dto                           // 
+│   │               │── dto                           
 │   │               ├── repository
 │   │               ├── service
 │   │               └── BookstoreApplication.java     // Lớp chính để chạy ứng dụng Spring Boot
@@ -33,17 +42,8 @@ src
 │       │   │   ├── layout_dashboard.html            // Template layout cho dashboard quản trị
 │       │   │   └── layout_user.html                 // Template layout cho giao diện người dùng
 │       │   ├── admin
-│       │   │   ├── dashboard.html                   // Trang chính của dashboard quản trị
-│       │   │   ├── book_management.html             // Trang quản lý sách
-│       │   │   ├── order_management.html            // Trang quản lý đơn hàng
-│       │   │   ├── user_management.html             // Trang quản lý người dùng
-│       │   │   └── category_management.html         // Trang quản lý danh mục
+│       │   │   ├── Accounts.html  <<-- Đây là phần muốn thiết kế
 │       │   ├── user
-│       │   │   ├── home.html                        // Trang chủ người dùng
-│       │   │   ├── cart.html                        // Trang giỏ hàng
-│       │   │   ├── checkout.html                    // Trang thanh toán
-│       │   │   ├── order_history.html               // Trang lịch sử mua hàng
-│       │   │   └── book_detail.html                 // Trang chi tiết sách
 │       │   ├── auth
 │       │   │   ├── login.html                       // Trang đăng nhập
 │       │   │   └── register.html                    // Trang đăng ký
