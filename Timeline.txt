@@ -42,7 +42,8 @@ src
 │       │   │   ├── layout_dashboard.html            // Template layout cho dashboard quản trị
 │       │   │   └── layout_user.html                 // Template layout cho giao diện người dùng
 │       │   ├── admin
-│       │   │   ├── Accounts.html  <<-- Đây là phần muốn thiết kế
+│       │   │   ├── Accounts.html  <<-- Đã thiết kế.
+│       │   │   ├── Products.html  <<-- Đây là phần tôi muốn thiết kế.
 │       │   ├── user
 │       │   ├── auth
 │       │   │   ├── login.html                       // Trang đăng nhập

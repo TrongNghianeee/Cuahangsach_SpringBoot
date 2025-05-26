@@ -11,7 +11,6 @@ public class UserDTO {
     @Size(min = 3, max = 50, message = "Tên người dùng phải từ 3 đến 50 ký tự")
     private String username;
 
-    @NotBlank(message = "Mật khẩu không được để trống")
     @Size(min = 6, max = 255, message = "Mật khẩu phải từ 6 đến 255 ký tự")
     private String password;
 
@@ -26,4 +25,8 @@ public class UserDTO {
     private String phone;
 
     private String address;
+
+    private String role; // KH, Nvien, Qly
+
+    private String status; // Active, Lock
 }

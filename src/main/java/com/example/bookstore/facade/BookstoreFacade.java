@@ -1,43 +1,37 @@
 package com.example.bookstore.facade;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import com.example.bookstore.dto.UserDTO;
 import com.example.bookstore.model.User;
-import com.example.bookstore.repository.UserRepository;
+import com.example.bookstore.service.UserService;
 
 @Component
 public class BookstoreFacade {
 
     @Autowired
-    private UserRepository userRepository;
+    private UserService userService;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    public User registerUser(UserDTO userDTO) {
+        return userService.createUser(userDTO);
+    }
 
-    public void registerUser(UserDTO userDTO) {
-        // Kiểm tra username và email đã tồn tại
-        if (userRepository.findByUsername(userDTO.getUsername()).isPresent()) {
-            throw new IllegalArgumentException("Tên người dùng đã tồn tại");
-        }
-        if (userRepository.findByEmail(userDTO.getEmail()).isPresent()) {
-            throw new IllegalArgumentException("Email đã tồn tại");
-        }
+    public User updateUser(Integer userId, UserDTO userDTO) {
+        return userService.updateUser(userId, userDTO);
+    }
 
-        // Chuyển DTO thành entity
-        User user = new User();
-        user.setUsername(userDTO.getUsername());
-        user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
-        user.setEmail(userDTO.getEmail());
-        user.setFullName(userDTO.getFullName());
-        user.setPhone(userDTO.getPhone());
-        user.setAddress(userDTO.getAddress());
-        user.setRole("KH"); // Mặc định là khách hàng
-        user.setStatus("Active");
+    public void toggleUserStatus(Integer userId, String status) {
+        userService.toggleUserStatus(userId, status);
+    }
 
-        // Lưu vào database
-        userRepository.save(user);
+    public List<User> getAllUsers() {
+        return userService.getAllUsers();
+    }
+
+    public User getUserById(Integer userId) {
+        return userService.getUserById(userId);
     }
 }
