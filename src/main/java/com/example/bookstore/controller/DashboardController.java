@@ -19,15 +19,4 @@ public class DashboardController {
         return "admin/overview";
     }
 
-    @GetMapping("/admin/Accounts")
-    public String pageB(Model model) {
-        model.addAttribute("activePage", "Accounts");
-        return "admin/Accounts";
-    }
-
-    @GetMapping("/admin/Products")
-    public String pageC(Model model) {
-        model.addAttribute("activePage", "Products");
-        return "admin/Products";
-    }
 }
