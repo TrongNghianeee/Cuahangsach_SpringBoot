@@ -1,29 +1,57 @@
 package com.example.bookstore.controller;
 
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
-import org.springframework.stereotype.Controller;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import com.example.bookstore.dto.LoginRequest;
+import com.example.bookstore.dto.RegistryRequest;
+import com.example.bookstore.dto.RegistryResponse;
+import com.example.bookstore.dto.Token;
+import com.example.bookstore.dto.UserDTO;
+import com.example.bookstore.facade.AuthFacade;
 
-@Controller
+@RestController
+@RequestMapping("/api/auth")
 public class AuthController {
 
-    @GetMapping("/login")
-    public String showLoginForm() {
-        return "auth/login";
+    private final AuthFacade authFacade;
+
+    @Autowired
+    public AuthController(AuthFacade authFacade) {
+        this.authFacade = authFacade;
     }
-    
-    @GetMapping("/manual-logout")
-    public String logoutPage(HttpServletRequest request, HttpServletResponse response) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null) {
-            new SecurityContextLogoutHandler().logout(request, response, auth);
+
+    @PostMapping("/login")
+    public ResponseEntity<Token> login(@RequestBody LoginRequest loginRequest) {
+        Token token = authFacade.login(loginRequest.getUsername(), loginRequest.getPassword());
+        if (token == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
         }
-        return "redirect:/login?logout=true";
+        return ResponseEntity.ok(token);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserDTO> getCurrentUser(@RequestHeader("Authorization") String token) {
+        UserDTO user = authFacade.getCurrentUser(token.replace("Bearer ", ""));
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
+        }
+        return ResponseEntity.ok(user);
+    }
+
+    @PostMapping("/registry")
+    public ResponseEntity<RegistryResponse> registry(@RequestBody RegistryRequest request) {
+        RegistryResponse response = authFacade.registry(request);
+        if (response.getError() != null) {
+            return ResponseEntity.badRequest().body(response);
+        }
+        return ResponseEntity.ok(response);
     }
 }

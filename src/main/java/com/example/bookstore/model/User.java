@@ -60,4 +60,8 @@ public class User {
 
     @OneToMany(mappedBy = "user")
     private List<ShoppingCart> cartItems;
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
 }

@@ -18,6 +18,8 @@
 - Sinh code cho GlobalExceptionHandler để xử lý ngoại lệ.
 - Tạo template error.html với Bootstrap.
 
+Lombok Annotations Support for VS Code
+
 
 singleton
 
@@ -35,19 +37,8 @@ src
 │   │               ├── repository
 │   │               ├── service
 │   │               └── BookstoreApplication.java     // Lớp chính để chạy ứng dụng Spring Boot
-│   └── resources
-│       ├── static
-│       ├── templates
-│       │   ├── layout
-│       │   │   ├── layout_dashboard.html            // Template layout cho dashboard quản trị
-│       │   │   └── layout_user.html                 // Template layout cho giao diện người dùng
-│       │   ├── admin
-│       │   │   ├── Accounts.html  <<-- Đã thiết kế.
-│       │   │   ├── Products.html  <<-- Đây là phần tôi muốn thiết kế.
-│       │   ├── user
-│       │   ├── auth
-│       │   │   ├── login.html                       // Trang đăng nhập
-│       │   │   └── register.html                    // Trang đăng ký
-│       │   └── error
-│       │       └── error.html                       // Trang xử lý lỗi chung
-│       └── application.properties                   // Cấu hình ứng dụng (DB, port, v.v.)
+                  
+npm create vite@latest front-end
+
+npm install
+npm run dev
