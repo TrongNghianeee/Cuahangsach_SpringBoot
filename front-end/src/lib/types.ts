@@ -31,11 +31,9 @@ export interface Product {
 	publicationYear?: number;
 	description?: string;
 	price: number;
-	categoryIds?: number[];
-	categoryNames?: string[];
-	primaryImageUrl?: string;
-	imageUrls?: string[];
 	stockQuantity?: number;
+	categories?: Category[];
+	images?: BookImage[];
 }
 
 export interface ProductFormData {
@@ -45,8 +43,14 @@ export interface ProductFormData {
 	publicationYear: number | null;
 	description: string;
 	price: number | null;
+	stockQuantity: number;
 	categoryIds: number[];
-	primaryImageUrl: string;
+}
+
+export interface BookImage {
+	imageId: number;
+	imageUrl: string;
+	isPrimary: boolean;
 }
 
 export interface Category {

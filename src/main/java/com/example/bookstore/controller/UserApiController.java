@@ -17,18 +17,19 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.bookstore.dto.UserDTO;
 import com.example.bookstore.dto.UserResponseDTO;
-import com.example.bookstore.facade.BookstoreFacade;
-import com.example.bookstore.model.User;
+import com.example.bookstore.facade.UserFacade;
 
 @RestController
 @RequestMapping("/api/admin/users")
 public class UserApiController {
 
     @Autowired
-    private BookstoreFacade bookstoreFacade;    @GetMapping
+    private UserFacade userFacade;
+
+    @GetMapping
     public ResponseEntity<Map<String, Object>> getAllUsers() {
         try {
-            List<UserResponseDTO> users = bookstoreFacade.getAllUsersDTO();
+            List<UserResponseDTO> users = userFacade.getAllUsersDTO();
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", users);
@@ -45,7 +46,7 @@ public class UserApiController {
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getUserById(@PathVariable Integer id) {
         try {
-            User user = bookstoreFacade.getUserById(id);
+            UserResponseDTO user = userFacade.getUserByIdDTO(id);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", user);
@@ -67,7 +68,7 @@ public class UserApiController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> createUser(@RequestBody UserDTO userDTO) {
         try {
-            User user = bookstoreFacade.registerUser(userDTO);
+            UserResponseDTO user = userFacade.registerUser(userDTO);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", user);
@@ -89,7 +90,7 @@ public class UserApiController {
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateUser(@PathVariable Integer id, @RequestBody UserDTO userDTO) {
         try {
-            User user = bookstoreFacade.updateUser(id, userDTO);
+            UserResponseDTO user = userFacade.updateUser(id, userDTO);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", user);
@@ -119,7 +120,7 @@ public class UserApiController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
             }
 
-            bookstoreFacade.toggleUserStatus(id, status);
+            userFacade.toggleUserStatus(id, status);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", status.equals("Lock") ? "Khóa tài khoản thành công" : "Mở khóa tài khoản thành công");

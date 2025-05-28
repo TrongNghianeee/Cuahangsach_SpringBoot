@@ -1,12 +1,23 @@
 package com.example.bookstore.model;
 
+import java.math.BigDecimal;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import jakarta.persistence.*;
-import java.math.BigDecimal;
-import java.util.List;
 
 @Entity
 @Table(name = "books")
@@ -41,6 +52,7 @@ public class Book {
     private Integer stockQuantity;
 
     @ManyToMany
+    @JsonIgnore
     @JoinTable(
         name = "categories_details",
         joinColumns = @JoinColumn(name = "book_id"),
@@ -49,14 +61,18 @@ public class Book {
     private List<Category> categories;
 
     @OneToMany(mappedBy = "book")
+    @JsonIgnore
     private List<BookImage> images;
 
     @OneToMany(mappedBy = "book")
+    @JsonIgnore
     private List<InventoryTransaction> transactions;
 
     @OneToMany(mappedBy = "book")
+    @JsonIgnore
     private List<OrderDetail> orderDetails;
 
     @OneToMany(mappedBy = "book")
+    @JsonIgnore
     private List<ShoppingCart> cartItems;
 }

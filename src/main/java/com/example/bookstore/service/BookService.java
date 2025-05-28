@@ -29,7 +29,9 @@ public class BookService {
     private CategoryService categoryService;
 
     @Autowired
-    private BookImageService bookImageService;    public List<Book> getAllBooks() {
+    private BookImageService bookImageService;    
+    
+    public List<Book> getAllBooks() {
         // Lấy sách với categories trước
         List<Book> books = bookRepository.findAllWithCategories();
         
@@ -60,6 +62,14 @@ public class BookService {
         }
         
         return books;
+    }
+
+    public List<ProductDTO> getAllBookstoDTO() {
+        List<Book> books = getAllBooks(); // dùng lại logic đã có
+
+        return books.stream()
+            .map(this::convertToProductDTO)
+            .collect(Collectors.toList());
     }
 
     public Book getBookById(Integer bookId) {
@@ -140,6 +150,8 @@ public class BookService {
     public List<Book> searchBooks(String keyword) {
         return bookRepository.findByTitleContainingIgnoreCase(keyword);
     }
+
+    
 
     // Chuyển đổi Book sang ProductDTO
     public ProductDTO convertToProductDTO(Book book) {

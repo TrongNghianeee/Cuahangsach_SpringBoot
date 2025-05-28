@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProductDTO {
+public class BookDTO {
     private Integer bookId;
     
     @NotBlank(message = "Tên sách không được để trống")

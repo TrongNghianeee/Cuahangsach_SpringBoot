@@ -7,12 +7,9 @@ import org.springframework.stereotype.Component;
 
 import com.example.bookstore.dto.InventoryDTO;
 import com.example.bookstore.dto.ProductDTO;
-import com.example.bookstore.dto.UserDTO;
-import com.example.bookstore.dto.UserResponseDTO;
 import com.example.bookstore.model.Book;
 import com.example.bookstore.model.Category;
 import com.example.bookstore.model.InventoryTransaction;
-import com.example.bookstore.model.User;
 import com.example.bookstore.service.BookService;
 import com.example.bookstore.service.CategoryService;
 import com.example.bookstore.service.InventoryService;
@@ -30,31 +27,6 @@ public class BookstoreFacade {
 
     @Autowired
     private InventoryService inventoryService;    
-    // ===== USER MANAGEMENT METHODS =====
-    
-    public User registerUser(UserDTO userDTO) {
-        return userService.createUser(userDTO);
-    }
-
-    public User updateUser(Integer userId, UserDTO userDTO) {
-        return userService.updateUser(userId, userDTO);
-    }
-
-    public void toggleUserStatus(Integer userId, String status) {
-        userService.toggleUserStatus(userId, status);
-    }
-
-    public List<User> getAllUsers() {
-        return userService.getAllUsers();
-    }
-
-    public List<UserResponseDTO> getAllUsersDTO() {
-        return userService.getAllUsersAsDTO();
-    }
-
-    public User getUserById(Integer userId) {
-        return userService.getUserById(userId);
-    }
 
     // ===== PRODUCT MANAGEMENT METHODS =====
     
@@ -70,9 +42,21 @@ public class BookstoreFacade {
         return categoryService.getCategoryById(categoryId);
     }
 
+    public Category updateCategory(Integer categoryId, String categoryName) {
+        return categoryService.updateCategory(categoryId, categoryName);
+    }
+
+    public void deleteCategory(Integer categoryId) {
+        categoryService.deleteCategory(categoryId);
+    }
+
     // Book operations
     public List<Book> getAllBooks() {
         return bookService.getAllBooks();
+    }
+
+    public List<ProductDTO> getAllBookstoDTO() {
+        return bookService.getAllBookstoDTO();
     }
 
     public Book createBook(ProductDTO productDTO) {

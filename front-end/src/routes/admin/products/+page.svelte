@@ -10,8 +10,10 @@
 	const loading = writable<boolean>(false);
 	const message = writable<string>('');
 	const error = writable<string>('');
-	const showModal = writable<boolean>(false);
+	const showProductModal = writable<boolean>(false);
+	const showCategoryModal = writable<boolean>(false);
 	const editMode = writable<boolean>(false);
+	const editCategoryMode = writable<boolean>(false);
 
 	// Form data
 	let formData: ProductFormData = {
@@ -21,11 +23,16 @@
 		publicationYear: null,
 		description: '',
 		price: null,
-		categoryIds: [],
-		primaryImageUrl: ''
+		stockQuantity: 0,
+		categoryIds: []
+	};
+
+	let categoryFormData = {
+		categoryName: ''
 	};
 
 	let editProductId: number | null = null;
+	let editCategoryId: number | null = null;
 
 	// API Base URLs
 	const API_BASE = 'http://localhost:8080/api/admin/products';
@@ -61,10 +68,9 @@
 		}
 	}
 
-	async function submitForm(): Promise<void> {
-		if (!validateForm()) return;
+	async function submitProductForm(): Promise<void> {
+		if (!validateProductForm()) return;
 
-		// Type guard for editProductId
 		if ($editMode && editProductId === null) {
 			error.set('Lỗi: ID sản phẩm không hợp lệ');
 			return;
@@ -90,9 +96,50 @@
 
 			if (result.success) {
 				message.set(result.message);
-				resetForm();
-				showModal.set(false);
+				resetProductForm();
+				showProductModal.set(false);
 				fetchProducts();
+			} else {
+				error.set(result.message);
+			}
+		} catch (err) {
+			error.set('Lỗi kết nối: ' + (err as Error).message);
+		} finally {
+			loading.set(false);
+		}
+	}
+
+	async function submitCategoryForm(): Promise<void> {
+		if (!validateCategoryForm()) return;
+
+		if ($editCategoryMode && editCategoryId === null) {
+			error.set('Lỗi: ID danh mục không hợp lệ');
+			return;
+		}
+
+		loading.set(true);
+		error.set('');
+		message.set('');
+
+		try {
+			const url = $editCategoryMode ? `${CATEGORIES_API}/${editCategoryId}` : CATEGORIES_API;
+			const method = $editCategoryMode ? 'PUT' : 'POST';
+
+			const response = await fetch(url, {
+				method,
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(categoryFormData)
+			});
+
+			const result: ApiResponse<Category> = await response.json();
+
+			if (result.success) {
+				message.set(result.message);
+				resetCategoryForm();
+				showCategoryModal.set(false);
+				fetchCategories();
 			} else {
 				error.set(result.message);
 			}
@@ -111,12 +158,21 @@
 			publicationYear: product.publicationYear || null,
 			description: product.description || '',
 			price: product.price || null,
-			categoryIds: product.categoryIds || [],
-			primaryImageUrl: product.primaryImageUrl || ''
+			stockQuantity: product.stockQuantity || 0,
+			categoryIds: product.categories?.map(c => c.categoryId) || []
 		};
 		editProductId = product.bookId;
 		editMode.set(true);
-		showModal.set(true);
+		showProductModal.set(true);
+	}
+
+	async function editCategory(category: Category): Promise<void> {
+		categoryFormData = {
+			categoryName: category.categoryName
+		};
+		editCategoryId = category.categoryId;
+		editCategoryMode.set(true);
+		showCategoryModal.set(true);
 	}
 
 	async function deleteProduct(productId: number): Promise<void> {
@@ -143,7 +199,31 @@
 		}
 	}
 
-	function validateForm(): boolean {
+	async function deleteCategory(categoryId: number): Promise<void> {
+		if (!confirm('Bạn có chắc chắn muốn xóa danh mục này?')) return;
+
+		loading.set(true);
+		try {
+			const response = await fetch(`${CATEGORIES_API}/${categoryId}`, {
+				method: 'DELETE'
+			});
+
+			const result: ApiResponse = await response.json();
+
+			if (result.success) {
+				message.set(result.message);
+				fetchCategories();
+			} else {
+				error.set(result.message);
+			}
+		} catch (err) {
+			error.set('Lỗi kết nối: ' + (err as Error).message);
+		} finally {
+			loading.set(false);
+		}
+	}
+
+	function validateProductForm(): boolean {
 		if (!formData.title.trim()) {
 			error.set('Tên sản phẩm không được để trống');
 			return false;
@@ -155,7 +235,15 @@
 		return true;
 	}
 
-	function resetForm(): void {
+	function validateCategoryForm(): boolean {
+		if (!categoryFormData.categoryName.trim()) {
+			error.set('Tên danh mục không được để trống');
+			return false;
+		}
+		return true;
+	}
+
+	function resetProductForm(): void {
 		formData = {
 			title: '',
 			author: '',
@@ -163,21 +251,40 @@
 			publicationYear: null,
 			description: '',
 			price: null,
-			categoryIds: [],
-			primaryImageUrl: ''
+			stockQuantity: 0,
+			categoryIds: []
 		};
 		editProductId = null;
 		editMode.set(false);
 	}
 
-	function openAddModal(): void {
-		resetForm();
-		showModal.set(true);
+	function resetCategoryForm(): void {
+		categoryFormData = {
+			categoryName: ''
+		};
+		editCategoryId = null;
+		editCategoryMode.set(false);
 	}
 
-	function closeModal(): void {
-		showModal.set(false);
-		resetForm();
+	function openAddProductModal(): void {
+		resetProductForm();
+		showProductModal.set(true);
+	}
+
+	function openAddCategoryModal(): void {
+		resetCategoryForm();
+		showCategoryModal.set(true);
+	}
+
+	function closeProductModal(): void {
+		showProductModal.set(false);
+		resetProductForm();
+		error.set('');
+	}
+
+	function closeCategoryModal(): void {
+		showCategoryModal.set(false);
+		resetCategoryForm();
 		error.set('');
 	}
 
@@ -196,10 +303,16 @@
 		}).format(price);
 	}
 
+	function getCategoryNames(product: Product): string {
+		if (!product.categories || product.categories.length === 0) return 'Chưa phân loại';
+		return product.categories.map(c => c.categoryName).join(', ');
+	}
+
 	// Clear messages after 3 seconds
 	$: if ($message) {
 		setTimeout(() => message.set(''), 3000);
 	}
+
 	$: if ($error) {
 		setTimeout(() => error.set(''), 5000);
 	}
@@ -210,282 +323,350 @@
 	});
 </script>
 
-<div class="p-6">
-	<div class="flex justify-between items-center mb-6">
-		<h1 class="text-3xl font-bold text-gray-900">Quản lý sản phẩm</h1>
-		<button
-			class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-			on:click={openAddModal}
-		>
-			<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-			</svg>
-			Thêm sản phẩm
-		</button>
+<div class="container mx-auto px-4 py-8">
+	<div class="mb-8">
+		<h1 class="text-3xl font-bold text-gray-900 mb-2">Quản lý Sản phẩm</h1>
+		<p class="text-gray-600">Quản lý sản phẩm và danh mục trong cửa hàng</p>
 	</div>
 
-	<!-- Messages -->
+	<!-- Alert Messages -->
 	{#if $message}
-		<div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+		<div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
 			{$message}
 		</div>
 	{/if}
 
 	{#if $error}
-		<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+		<div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
 			{$error}
 		</div>
 	{/if}
 
-	<!-- Loading indicator -->
-	{#if $loading}
-		<div class="flex justify-center py-8">
-			<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+	<!-- Action Buttons -->
+	<div class="mb-6 flex gap-4">
+		<button
+			on:click={openAddProductModal}
+			class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg flex items-center gap-2"
+		>
+			<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+			</svg>
+			Thêm Sản phẩm
+		</button>
+		
+		<button
+			on:click={openAddCategoryModal}
+			class="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg flex items-center gap-2"
+		>
+			<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z"/>
+			</svg>
+			Thêm Danh mục
+		</button>
+	</div>
+
+	<!-- Categories Section -->
+	<div class="mb-8 bg-white rounded-lg shadow p-6">
+		<h2 class="text-xl font-semibold mb-4">Danh mục hiện có</h2>
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+			{#each $categories as category}
+				<div class="border rounded-lg p-4 flex justify-between items-center">
+					<span class="font-medium">{category.categoryName}</span>
+					<div class="flex gap-2">
+						<button
+							on:click={() => editCategory(category)}
+							class="text-blue-600 hover:text-blue-800 text-sm"
+						>
+							Sửa
+						</button>
+						<button
+							on:click={() => deleteCategory(category.categoryId)}
+							class="text-red-600 hover:text-red-800 text-sm"
+						>
+							Xóa
+						</button>
+					</div>
+				</div>
+			{/each}
 		</div>
-	{/if}
+	</div>
 
-	<!-- Products table -->
-	<div class="bg-white shadow-md rounded-lg overflow-hidden">
-		<table class="min-w-full divide-y divide-gray-200">
-			<thead class="bg-gray-50">
-				<tr>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-						Sản phẩm
-					</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-						Tác giả
-					</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-						Giá
-					</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-						Danh mục
-					</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-						Thao tác
-					</th>
-				</tr>
-			</thead>
-			<tbody class="bg-white divide-y divide-gray-200">
-				{#each $products as product}
-					<tr>
-						<td class="px-6 py-4 whitespace-nowrap">
-							<div class="flex items-center">
-								{#if product.primaryImageUrl}
-									<img class="h-10 w-10 rounded object-cover mr-4" src={product.primaryImageUrl} alt={product.title} />
-								{:else}
-									<div class="h-10 w-10 rounded bg-gray-200 flex items-center justify-center mr-4">
-										<svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-										</svg>
+	<!-- Products Table -->
+	<div class="bg-white rounded-lg shadow overflow-hidden">
+		<div class="px-6 py-4 border-b border-gray-200">
+			<h2 class="text-xl font-semibold">Danh sách Sản phẩm</h2>
+		</div>
+
+		{#if $loading}
+			<div class="flex justify-center items-center py-8">
+				<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+			</div>
+		{:else}
+			<div class="overflow-x-auto">
+				<table class="min-w-full divide-y divide-gray-200">
+					<thead class="bg-gray-50">
+						<tr>
+							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+								Sản phẩm
+							</th>
+							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+								Tác giả
+							</th>
+							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+								Giá
+							</th>
+							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+								Tồn kho
+							</th>
+							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+								Danh mục
+							</th>
+							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+								Thao tác
+							</th>
+						</tr>
+					</thead>
+					<tbody class="bg-white divide-y divide-gray-200">
+						{#each $products as product}
+							<tr class="hover:bg-gray-50">
+								<td class="px-6 py-4 whitespace-nowrap">
+									<div>
+										<div class="text-sm font-medium text-gray-900">{product.title}</div>
+										<div class="text-sm text-gray-500">{product.publisher || 'Chưa có NXB'}</div>
 									</div>
-								{/if}
-								<div>
-									<div class="text-sm font-medium text-gray-900">{product.title}</div>
-									<div class="text-sm text-gray-500">{product.publisher || ''}</div>
-								</div>
-							</div>
-						</td>
-						<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-							{product.author || '-'}
-						</td>
-						<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-							{formatPrice(product.price)}
-						</td>
-						<td class="px-6 py-4 whitespace-nowrap">
-							<div class="flex flex-wrap gap-1">
-								{#each (product.categoryNames || []) as categoryName}
-									<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-										{categoryName}
-									</span>
-								{/each}
-							</div>
-						</td>
-						<td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-							<div class="flex space-x-3">
-								<!-- Edit Icon -->
-								<button
-									class="text-indigo-600 hover:text-indigo-900 p-1 rounded-md hover:bg-indigo-50 transition-colors"
-									on:click={() => editProduct(product)}
-									title="Sửa sản phẩm"
-								>
-									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-									</svg>
-								</button>
-								
-								<!-- Delete Icon -->
-								<button
-									class="text-red-600 hover:text-red-900 p-1 rounded-md hover:bg-red-50 transition-colors"
-									on:click={() => deleteProduct(product.bookId)}
-									title="Xóa sản phẩm"
-								>
-									<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-									</svg>
-								</button>
-							</div>
-						</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-
-		{#if $products.length === 0 && !$loading}
-			<div class="text-center py-8 text-gray-500">
-				Không có sản phẩm nào
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+									{product.author || 'Chưa có tác giả'}
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+									{product.price ? formatPrice(product.price) : 'Chưa có giá'}
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+									{product.stockQuantity || 0}
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+									{getCategoryNames(product)}
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+									<button
+										on:click={() => editProduct(product)}
+										class="text-blue-600 hover:text-blue-900 mr-3"
+									>
+										Sửa
+									</button>
+									<button
+										on:click={() => deleteProduct(product.bookId)}
+										class="text-red-600 hover:text-red-900"
+									>
+										Xóa
+									</button>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
 			</div>
 		{/if}
 	</div>
 </div>
 
-<!-- Modal -->
-{#if $showModal}
+<!-- Product Modal -->
+{#if $showProductModal}
 	<div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-		<div class="relative top-10 mx-auto p-5 border w-full max-w-2xl bg-white rounded-lg shadow-lg">
-			<div class="flex justify-between items-center mb-4">
-				<h3 class="text-lg font-bold text-gray-900">
-					{$editMode ? 'Sửa sản phẩm' : 'Thêm sản phẩm mới'}
-				</h3>
-				<button
-					class="text-gray-400 hover:text-gray-600"
-					on:click={closeModal}
-				>
-					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-					</svg>
-				</button>
-			</div>
-
-			<form on:submit|preventDefault={submitForm} class="space-y-4">
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-					<div>
-						<label for="title" class="block text-sm font-medium text-gray-700 mb-1">
-							Tên sản phẩm *
-						</label>
-						<input
-							id="title"
-							type="text"
-							bind:value={formData.title}
-							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-							required
-						/>
-					</div>
-
-					<div>
-						<label for="author" class="block text-sm font-medium text-gray-700 mb-1">
-							Tác giả
-						</label>
-						<input
-							id="author"
-							type="text"
-							bind:value={formData.author}
-							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-						/>
-					</div>
-
-					<div>
-						<label for="publisher" class="block text-sm font-medium text-gray-700 mb-1">
-							Nhà xuất bản
-						</label>
-						<input
-							id="publisher"
-							type="text"
-							bind:value={formData.publisher}
-							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-						/>
-					</div>
-
-					<div>
-						<label for="publicationYear" class="block text-sm font-medium text-gray-700 mb-1">
-							Năm xuất bản
-						</label>
-						<input
-							id="publicationYear"
-							type="number"
-							bind:value={formData.publicationYear}
-							min="1000"
-							max="2025"
-							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-						/>
-					</div>
-
-					<div>
-						<label for="price" class="block text-sm font-medium text-gray-700 mb-1">
-							Giá *
-						</label>
-						<input
-							id="price"
-							type="number"
-							bind:value={formData.price}
-							min="0"
-							step="1000"
-							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-							required
-						/>
-					</div>
-
-					<div>
-						<label for="primaryImageUrl" class="block text-sm font-medium text-gray-700 mb-1">
-							URL hình ảnh
-						</label>
-						<input
-							id="primaryImageUrl"
-							type="url"
-							bind:value={formData.primaryImageUrl}
-							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-						/>
-					</div>
+		<div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+			<div class="mt-3">
+				<div class="flex justify-between items-center mb-4">
+					<h3 class="text-lg font-medium text-gray-900">
+						{$editMode ? 'Chỉnh sửa' : 'Thêm'} Sản phẩm
+					</h3>
+					<button
+						on:click={closeProductModal}
+						class="text-gray-400 hover:text-gray-600"
+					>
+						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+						</svg>
+					</button>
 				</div>
 
-				<div>
-					<label for="description" class="block text-sm font-medium text-gray-700 mb-1">
-						Mô tả
-					</label>
-					<textarea
-						id="description"
-						bind:value={formData.description}
-						rows="4"
-						class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-					></textarea>
-				</div>
-
-				<div>
-					<label class="block text-sm font-medium text-gray-700 mb-2">
-						Danh mục
-					</label>
-					<div class="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto border border-gray-300 rounded-md p-3">
-						{#each $categories as category}
-							<label class="flex items-center space-x-2 cursor-pointer">
-								<input
-									type="checkbox"
-									checked={formData.categoryIds.includes(category.categoryId)}
-									on:change={() => toggleCategory(category.categoryId)}
-									class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-								/>
-								<span class="text-sm text-gray-700">{category.categoryName}</span>
+				<form on:submit|preventDefault={submitProductForm} class="space-y-4">
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-1">
+								Tên sách <span class="text-red-500">*</span>
 							</label>
-						{/each}
+							<input
+								type="text"
+								bind:value={formData.title}
+								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+								required
+							/>
+						</div>
+
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-1">
+								Tác giả
+							</label>
+							<input
+								type="text"
+								bind:value={formData.author}
+								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+							/>
+						</div>
+
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-1">
+								Nhà xuất bản
+							</label>
+							<input
+								type="text"
+								bind:value={formData.publisher}
+								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+							/>
+						</div>
+
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-1">
+								Năm xuất bản
+							</label>
+							<input
+								type="number"
+								bind:value={formData.publicationYear}
+								min="1900"
+								max="2030"
+								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+							/>
+						</div>
+
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-1">
+								Giá <span class="text-red-500">*</span>
+							</label>
+							<input
+								type="number"
+								bind:value={formData.price}
+								min="0"
+								step="1000"
+								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+								required
+							/>
+						</div>
+
+						<div>
+							<label class="block text-sm font-medium text-gray-700 mb-1">
+								Số lượng tồn kho
+							</label>
+							<input
+								type="number"
+								bind:value={formData.stockQuantity}
+								min="0"
+								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+							/>
+						</div>
 					</div>
+
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-1">
+							Mô tả
+						</label>
+						<textarea
+							bind:value={formData.description}
+							rows="3"
+							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+						></textarea>
+					</div>
+
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-2">
+							Danh mục
+						</label>
+						<div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+							{#each $categories as category}
+								<label class="flex items-center">
+									<input
+										type="checkbox"
+										checked={formData.categoryIds.includes(category.categoryId)}
+										on:change={() => toggleCategory(category.categoryId)}
+										class="mr-2"
+									/>
+									<span class="text-sm">{category.categoryName}</span>
+								</label>
+							{/each}
+						</div>
+					</div>
+
+					<div class="flex justify-end space-x-3 pt-4">
+						<button
+							type="button"
+							on:click={closeProductModal}
+							class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md"
+						>
+							Hủy
+						</button>
+						<button
+							type="submit"
+							disabled={$loading}
+							class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50"
+						>
+							{$loading ? 'Đang xử lý...' : ($editMode ? 'Cập nhật' : 'Thêm')}
+						</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Category Modal -->
+{#if $showCategoryModal}
+	<div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+		<div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 lg:w-1/3 shadow-lg rounded-md bg-white">
+			<div class="mt-3">
+				<div class="flex justify-between items-center mb-4">
+					<h3 class="text-lg font-medium text-gray-900">
+						{$editCategoryMode ? 'Chỉnh sửa' : 'Thêm'} Danh mục
+					</h3>
+					<button
+						on:click={closeCategoryModal}
+						class="text-gray-400 hover:text-gray-600"
+					>
+						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+						</svg>
+					</button>
 				</div>
 
-				<div class="flex justify-end space-x-3 pt-4">
-					<button
-						type="button"
-						on:click={closeModal}
-						class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-					>
-						Hủy
-					</button>
-					<button
-						type="submit"
-						disabled={$loading}
-						class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-					>
-						{$loading ? 'Đang xử lý...' : ($editMode ? 'Cập nhật' : 'Thêm')}
-					</button>
-				</div>
-			</form>
+				<form on:submit|preventDefault={submitCategoryForm} class="space-y-4">
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-1">
+							Tên danh mục <span class="text-red-500">*</span>
+						</label>
+						<input
+							type="text"
+							bind:value={categoryFormData.categoryName}
+							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+							required
+						/>
+					</div>
+
+					<div class="flex justify-end space-x-3 pt-4">
+						<button
+							type="button"
+							on:click={closeCategoryModal}
+							class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md"
+						>
+							Hủy
+						</button>
+						<button
+							type="submit"
+							disabled={$loading}
+							class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md disabled:opacity-50"
+						>
+							{$loading ? 'Đang xử lý...' : ($editCategoryMode ? 'Cập nhật' : 'Thêm')}
+						</button>
+					</div>
+				</form>
+			</div>
 		</div>
 	</div>
 {/if}
