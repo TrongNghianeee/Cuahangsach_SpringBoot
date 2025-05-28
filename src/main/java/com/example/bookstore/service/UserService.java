@@ -1,6 +1,7 @@
 package com.example.bookstore.service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.bookstore.dto.UserDTO;
+import com.example.bookstore.dto.UserResponseDTO;
 import com.example.bookstore.model.User;
 import com.example.bookstore.repository.UserRepository;
 
@@ -107,6 +109,47 @@ public class UserService {
 
     public List<User> getAllUsers() {
         return userRepository.findAll();
+    }    /**
+     * Get all users as UserResponseDTO list
+     */
+    public List<UserResponseDTO> getAllUsersAsDTO() {
+        List<User> users = userRepository.findAll();
+        return users.stream()
+                .map(this::convertToUserResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Convert User entity to UserResponseDTO
+     */
+    public UserResponseDTO convertToUserResponseDTO(User user) {
+        UserResponseDTO dto = new UserResponseDTO();
+        dto.setUserId(user.getUserId());
+        dto.setUsername(user.getUsername());
+        dto.setEmail(user.getEmail());
+        dto.setFullName(user.getFullName());
+        dto.setPhone(user.getPhone());
+        dto.setAddress(user.getAddress());
+        dto.setRole(user.getRole());
+        dto.setStatus(user.getStatus());
+        dto.setCreatedAt(user.getCreatedAt() != null ? user.getCreatedAt().toString() : null);
+        return dto;
+    }
+
+    /**
+     * Convert User entity to UserDTO (for editing - without password)
+     */
+    public UserDTO convertToUserDTO(User user) {
+        UserDTO dto = new UserDTO();
+        dto.setUsername(user.getUsername());
+        dto.setEmail(user.getEmail());
+        dto.setFullName(user.getFullName());
+        dto.setPhone(user.getPhone());
+        dto.setAddress(user.getAddress());
+        dto.setRole(user.getRole());
+        dto.setStatus(user.getStatus());
+        // Note: password is not included in DTO for security
+        return dto;
     }
 
     public User getUserById(Integer userId) {

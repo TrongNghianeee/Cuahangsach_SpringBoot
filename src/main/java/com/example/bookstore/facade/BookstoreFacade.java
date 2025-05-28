@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import com.example.bookstore.dto.InventoryDTO;
 import com.example.bookstore.dto.ProductDTO;
 import com.example.bookstore.dto.UserDTO;
+import com.example.bookstore.dto.UserResponseDTO;
 import com.example.bookstore.model.Book;
 import com.example.bookstore.model.Category;
 import com.example.bookstore.model.InventoryTransaction;
@@ -28,8 +29,9 @@ public class BookstoreFacade {
     private CategoryService categoryService;
 
     @Autowired
-    private InventoryService inventoryService;
-
+    private InventoryService inventoryService;    
+    // ===== USER MANAGEMENT METHODS =====
+    
     public User registerUser(UserDTO userDTO) {
         return userService.createUser(userDTO);
     }
@@ -46,13 +48,16 @@ public class BookstoreFacade {
         return userService.getAllUsers();
     }
 
+    public List<UserResponseDTO> getAllUsersDTO() {
+        return userService.getAllUsersAsDTO();
+    }
+
     public User getUserById(Integer userId) {
         return userService.getUserById(userId);
     }
 
     // ===== PRODUCT MANAGEMENT METHODS =====
     
-    // Category operations
     public List<Category> getAllCategories() {
         return categoryService.getAllCategories();
     }

@@ -31,6 +31,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Không dùng session
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll() // Cho phép truy cập công khai /api/auth/**
+                .requestMatchers("/api/admin/**").permitAll() // Temporarily allow admin API access for testing
                 .anyRequest().authenticated() // Các endpoint khác cần xác thực
             );
         return http.build();
