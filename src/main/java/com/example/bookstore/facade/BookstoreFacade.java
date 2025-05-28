@@ -93,7 +93,9 @@ public class BookstoreFacade {
 
     public ProductDTO convertToProductDTO(Book book) {
         return bookService.convertToProductDTO(book);
-    }    // ===== INVENTORY MANAGEMENT METHODS =====
+    }    
+    
+    // ===== INVENTORY MANAGEMENT METHODS =====
 
     public InventoryTransaction processInventoryTransaction(InventoryDTO inventoryDTO, Integer userId) {
         return inventoryService.processInventoryTransaction(inventoryDTO, userId);

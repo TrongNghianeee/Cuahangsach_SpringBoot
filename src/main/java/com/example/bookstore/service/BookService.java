@@ -3,17 +3,21 @@ package com.example.bookstore.service;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.bookstore.dto.BookImageDTO;
+import com.example.bookstore.dto.CategoryDTO;
 import com.example.bookstore.dto.ProductDTO;
 import com.example.bookstore.model.Book;
 import com.example.bookstore.model.BookImage;
 import com.example.bookstore.model.Category;
 import com.example.bookstore.repository.BookRepository;
+
 
 @Service
 public class BookService {
@@ -79,13 +83,13 @@ public class BookService {
         book.setPublicationYear(productDTO.getPublicationYear());
         book.setDescription(productDTO.getDescription());
         book.setPrice(productDTO.getPrice());
-        book.setStockQuantity(0); // Số lượng mặc định là 0, sẽ quản lý riêng
-        
-        // Thêm categories
-        if (productDTO.getCategoryIds() != null && !productDTO.getCategoryIds().isEmpty()) {
-            List<Category> categories = productDTO.getCategoryIds().stream()
-                .map(id -> categoryService.getCategoryById(id))
-                .filter(category -> category != null)
+        book.setStockQuantity(0); // Mặc định
+
+        // Thêm categories từ CategoryDTO
+        if (productDTO.getCategories() != null && !productDTO.getCategories().isEmpty()) {
+            List<Category> categories = productDTO.getCategories().stream()
+                .map(dto -> categoryService.getCategoryById(dto.getCategoryId()))
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
             book.setCategories(categories);
         }
@@ -94,9 +98,9 @@ public class BookService {
         book = bookRepository.save(book);
 
         // Thêm ảnh chính nếu có
-        if (productDTO.getPrimaryImageUrl() != null && !productDTO.getPrimaryImageUrl().trim().isEmpty()) {
-            bookImageService.createBookImage(book, productDTO.getPrimaryImageUrl(), "Ảnh chính", true);
-        }
+        // if (productDTO.getPrimaryImageUrl() != null && !productDTO.getPrimaryImageUrl().trim().isEmpty()) {
+        //     bookImageService.createBookImage(book, productDTO.getPrimaryImageUrl(), "Ảnh chính", true);
+        // }
 
         return book;
     }
@@ -111,12 +115,12 @@ public class BookService {
             book.setPublicationYear(productDTO.getPublicationYear());
             book.setDescription(productDTO.getDescription());
             book.setPrice(productDTO.getPrice());
-            
-            // Cập nhật categories
-            if (productDTO.getCategoryIds() != null) {
-                List<Category> categories = productDTO.getCategoryIds().stream()
-                    .map(id -> categoryService.getCategoryById(id))
-                    .filter(category -> category != null)
+
+            // Cập nhật categories từ CategoryDTO
+            if (productDTO.getCategories() != null) {
+                List<Category> categories = productDTO.getCategories().stream()
+                    .map(dto -> categoryService.getCategoryById(dto.getCategoryId()))
+                    .filter(Objects::nonNull)
                     .collect(Collectors.toList());
                 book.setCategories(categories);
             }
@@ -148,24 +152,29 @@ public class BookService {
         dto.setDescription(book.getDescription());
         dto.setPrice(book.getPrice());
         
+        // Convert Category -> CategoryDTO
         if (book.getCategories() != null) {
-            dto.setCategoryIds(book.getCategories().stream()
-                .map(Category::getCategoryId).collect(Collectors.toList()));
-            dto.setCategoryNames(book.getCategories().stream()
-                .map(Category::getCategoryName).collect(Collectors.toList()));
+            List<CategoryDTO> categoryDTOs = book.getCategories().stream()
+                .map(category -> new CategoryDTO(
+                    category.getCategoryId(),
+                    category.getCategoryName()
+                ))
+                .collect(Collectors.toList());
+            dto.setCategories(categoryDTOs);
         }
-        
+
+        // Convert BookImage -> BookImageDTO
         if (book.getImages() != null) {
-            dto.setImageUrls(book.getImages().stream()
-                .map(BookImage::getImageUrl).collect(Collectors.toList()));
-            
-            BookImage primaryImage = book.getImages().stream()
-                .filter(img -> img.getIsPrimary() != null && img.getIsPrimary())
-                .findFirst().orElse(null);
-            
-            if (primaryImage != null) {
-                dto.setPrimaryImageUrl(primaryImage.getImageUrl());
-            }
+            List<BookImageDTO> imageDTOs = book.getImages().stream()
+                .map(image -> new BookImageDTO(
+                    image.getImageId(),
+                    image.getImageUrl(),
+                    image.getDescription(),
+                    image.getIsPrimary(),
+                    image.getUploadedAt()
+                ))
+                .collect(Collectors.toList());
+            dto.setImages(imageDTOs);
         }
         
         return dto;
