@@ -35,8 +35,9 @@
 	let editCategoryId: number | null = null;
 
 	// API Base URLs
+	// API Base URLs
 	const API_BASE = 'http://localhost:8080/api/admin/products';
-	const CATEGORIES_API = `${API_BASE}/categories`;
+	const CATEGORIES_API = 'http://localhost:8080/api/admin/categories';
 
 	// Functions
 	async function fetchProducts(): Promise<void> {
@@ -370,6 +371,8 @@
 		<h2 class="text-xl font-semibold mb-4">Danh mục hiện có</h2>
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 			{#each $categories as category}
+
+
 				<div class="border rounded-lg p-4 flex justify-between items-center">
 					<span class="font-medium">{category.categoryName}</span>
 					<div class="flex gap-2">
@@ -490,6 +493,18 @@
 				</div>
 
 				<form on:submit|preventDefault={submitProductForm} class="space-y-4">
+					{#if $error}
+						<div class="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+							{$error}
+						</div>
+					{/if}
+
+					{#if $message}
+						<div class="p-4 bg-green-100 border border-green-400 text-green-700 rounded">
+							{$message}
+						</div>
+					{/if}
+
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 						<div>
 							<label class="block text-sm font-medium text-gray-700 mb-1">
@@ -637,6 +652,18 @@
 				</div>
 
 				<form on:submit|preventDefault={submitCategoryForm} class="space-y-4">
+					{#if $error}
+						<div class="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+							{$error}
+						</div>
+					{/if}
+
+					{#if $message}
+						<div class="p-4 bg-green-100 border border-green-400 text-green-700 rounded">
+							{$message}
+						</div>
+					{/if}
+
 					<div>
 						<label class="block text-sm font-medium text-gray-700 mb-1">
 							Tên danh mục <span class="text-red-500">*</span>

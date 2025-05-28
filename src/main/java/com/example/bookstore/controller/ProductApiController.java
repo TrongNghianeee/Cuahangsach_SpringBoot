@@ -1,43 +1,32 @@
 package com.example.bookstore.controller;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import com.example.bookstore.dto.CategoryDTO;
+import com.example.bookstore.dto.ProductDTO;
+import com.example.bookstore.facade.ProductFacade;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.example.bookstore.dto.ProductDTO;
-import com.example.bookstore.facade.BookstoreFacade;
-import com.example.bookstore.model.Book;
-import com.example.bookstore.model.Category;
-
+import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 @RestController
-@RequestMapping("/api/admin/products")
+@RequestMapping("/api/admin")
 @Validated
 public class ProductApiController {
 
     @Autowired
-    private BookstoreFacade bookstoreFacade;
+    private ProductFacade productFacade;
 
-    // ===== PRODUCT/BOOK ENDPOINTS =====
-
-    @GetMapping
+    // Product endpoints
+    @GetMapping("/products")
     public ResponseEntity<Map<String, Object>> getAllProducts() {
         try {
-            List<ProductDTO> productDTOs = bookstoreFacade.getAllBookstoDTO();
+            List<ProductDTO> productDTOs = productFacade.getAllProductsDTO();
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", productDTOs);
@@ -51,14 +40,13 @@ public class ProductApiController {
         }
     }
 
-
-    @GetMapping("/{id}")
+    @GetMapping("/products/{id}")
     public ResponseEntity<Map<String, Object>> getProductById(@PathVariable Integer id) {
         try {
-            Book book = bookstoreFacade.getBookById(id);
+            ProductDTO productDTO = productFacade.getProductByIdDTO(id);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("data", book);
+            response.put("data", productDTO);
             response.put("message", "Lấy thông tin sản phẩm thành công");
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
@@ -74,13 +62,13 @@ public class ProductApiController {
         }
     }
 
-    @PostMapping
+    @PostMapping("/products")
     public ResponseEntity<Map<String, Object>> createProduct(@Valid @RequestBody ProductDTO productDTO) {
         try {
-            Book book = bookstoreFacade.createBook(productDTO);
+            ProductDTO createdProduct = productFacade.createProduct(productDTO);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("data", book);
+            response.put("data", createdProduct);
             response.put("message", "Thêm sản phẩm thành công");
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IllegalArgumentException e) {
@@ -96,13 +84,13 @@ public class ProductApiController {
         }
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/products/{id}")
     public ResponseEntity<Map<String, Object>> updateProduct(@PathVariable Integer id, @Valid @RequestBody ProductDTO productDTO) {
         try {
-            Book book = bookstoreFacade.updateBook(id, productDTO);
+            ProductDTO updatedProduct = productFacade.updateProduct(id, productDTO);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("data", book);
+            response.put("data", updatedProduct);
             response.put("message", "Cập nhật sản phẩm thành công");
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
@@ -118,10 +106,10 @@ public class ProductApiController {
         }
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/products/{id}")
     public ResponseEntity<Map<String, Object>> deleteProduct(@PathVariable Integer id) {
         try {
-            bookstoreFacade.deleteBook(id);
+            productFacade.deleteProduct(id);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Xóa sản phẩm thành công");
@@ -139,12 +127,11 @@ public class ProductApiController {
         }
     }
 
-    // ===== CATEGORY ENDPOINTS =====
-
+    // Category endpoints (giữ nguyên từ phiên bản trước)
     @GetMapping("/categories")
     public ResponseEntity<Map<String, Object>> getAllCategories() {
         try {
-            List<Category> categories = bookstoreFacade.getAllCategories();
+            List<CategoryDTO> categories = productFacade.getAllCategoriesDTO();
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", categories);
@@ -161,7 +148,7 @@ public class ProductApiController {
     @GetMapping("/categories/{id}")
     public ResponseEntity<Map<String, Object>> getCategoryById(@PathVariable Integer id) {
         try {
-            Category category = bookstoreFacade.getCategoryById(id);
+            CategoryDTO category = productFacade.getCategoryByIdDTO(id);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", category);
@@ -191,7 +178,7 @@ public class ProductApiController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
             }
 
-            Category category = bookstoreFacade.createCategory(categoryName);
+            CategoryDTO category = productFacade.createCategory(categoryName);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", category);
@@ -221,7 +208,7 @@ public class ProductApiController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
             }
 
-            Category category = bookstoreFacade.updateCategory(id, categoryName);
+            CategoryDTO category = productFacade.updateCategory(id, categoryName);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", category);
@@ -243,7 +230,7 @@ public class ProductApiController {
     @DeleteMapping("/categories/{id}")
     public ResponseEntity<Map<String, Object>> deleteCategory(@PathVariable Integer id) {
         try {
-            bookstoreFacade.deleteCategory(id);
+            productFacade.deleteCategory(id);
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Xóa danh mục thành công");

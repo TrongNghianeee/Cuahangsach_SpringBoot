@@ -1,18 +1,18 @@
 package com.example.bookstore.dto;
 
-import java.time.LocalDateTime;
-
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class BookImageDTO {
     private Integer imageId;
     private String imageUrl;
     private String description;
     private Boolean isPrimary;
-    private LocalDateTime uploadedAt;
+
+    public BookImageDTO(com.example.bookstore.model.BookImage bookImage) {
+        this.imageId = bookImage.getImageId();
+        this.imageUrl = bookImage.getImageUrl();
+        this.description = bookImage.getDescription();
+        this.isPrimary = bookImage.getIsPrimary();
+    }
 }

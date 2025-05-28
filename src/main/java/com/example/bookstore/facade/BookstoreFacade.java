@@ -6,8 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.example.bookstore.dto.InventoryDTO;
-import com.example.bookstore.dto.ProductDTO;
-import com.example.bookstore.model.Book;
 import com.example.bookstore.model.Category;
 import com.example.bookstore.model.InventoryTransaction;
 import com.example.bookstore.service.BookService;
@@ -51,33 +49,33 @@ public class BookstoreFacade {
     }
 
     // Book operations
-    public List<Book> getAllBooks() {
-        return bookService.getAllBooks();
-    }
+    // public List<Book> getAllBooks() {
+    //     return bookService.getAllBooks();
+    // }
 
-    public List<ProductDTO> getAllBookstoDTO() {
-        return bookService.getAllBookstoDTO();
-    }
+    // public List<ProductDTO> getAllBookstoDTO() {
+    //     return bookService.getAllBookstoDTO();
+    // }
 
-    public Book createBook(ProductDTO productDTO) {
-        return bookService.createBook(productDTO);
-    }
+    // public Book createBook(ProductDTO productDTO) {
+    //     return bookService.createBook(productDTO);
+    // }
 
-    public Book updateBook(Integer bookId, ProductDTO productDTO) {
-        return bookService.updateBook(bookId, productDTO);
-    }
+    // public Book updateBook(Integer bookId, ProductDTO productDTO) {
+    //     return bookService.updateBook(bookId, productDTO);
+    // }
 
-    public Book getBookById(Integer bookId) {
-        return bookService.getBookById(bookId);
-    }
+    // public Book getBookById(Integer bookId) {
+    //     return bookService.getBookById(bookId);
+    // }
 
-    public void deleteBook(Integer bookId) {
-        bookService.deleteBook(bookId);
-    }
+    // public void deleteBook(Integer bookId) {
+    //     bookService.deleteBook(bookId);
+    // }
 
-    public ProductDTO convertToProductDTO(Book book) {
-        return bookService.convertToProductDTO(book);
-    }    
+    // public ProductDTO convertToProductDTO(Book book) {
+    //     return bookService.convertToProductDTO(book);
+    // }    
     
     // ===== INVENTORY MANAGEMENT METHODS =====
 
