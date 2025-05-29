@@ -1,7 +1,6 @@
 package com.example.bookstore.dto;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
@@ -19,12 +18,8 @@ public class InventoryDTO {
     @NotNull(message = "Vui lòng chọn sách")
     private Integer bookId;
     
-    private String bookTitle;
-    
-    private Integer currentStock;
-    
     @NotBlank(message = "Vui lòng chọn phương thức nhập/xuất")
-    private String transactionType; // "Nhập" hoặc "Xuất"
+    private String transactionType; 
     
     @NotNull(message = "Số lượng không được để trống")
     @Min(value = 1, message = "Số lượng phải lớn hơn 0")
@@ -33,9 +28,7 @@ public class InventoryDTO {
     @NotNull(message = "Giá không được để trống")
     @DecimalMin(value = "0.0", inclusive = false, message = "Giá phải lớn hơn 0")
     private BigDecimal price;
-    
-    // Cho hiển thị lịch sử
-    private Integer transactionId;
-    private LocalDateTime transactionDate;
-    private String username;
+
+    @NotNull(message = "user_id cannot be null")
+    private Integer userId;    
 }

@@ -3,7 +3,6 @@
 	import { onMount } from 'svelte';
 	import { writable } from 'svelte/store';
 	import type { Product, ProductFormData, Category, ApiResponse } from '$lib/types';
-
 	// Stores
 	const products = writable<Product[]>([]);
 	const categories = writable<Category[]>([]);
@@ -14,6 +13,8 @@
 	const showCategoryModal = writable<boolean>(false);
 	const editMode = writable<boolean>(false);
 	const editCategoryMode = writable<boolean>(false);
+	const selectedProducts = writable<Set<number>>(new Set());
+	const showInventoryModal = writable<boolean>(false);
 
 	// Form data
 	let formData: ProductFormData = {
@@ -26,10 +27,18 @@
 		stockQuantity: 0,
 		categoryIds: []
 	};
-
 	let categoryFormData = {
 		categoryName: ''
 	};
+
+	// Inventory form data
+	let inventoryFormData: Array<{
+		bookId: number;
+		title: string;
+		stockQuantity: number;
+		quantity: number;
+		price: number;
+	}> = [];
 
 	let editProductId: number | null = null;
 	let editCategoryId: number | null = null;
@@ -303,10 +312,54 @@
 			currency: 'VND'
 		}).format(price);
 	}
-
 	function getCategoryNames(product: Product): string {
 		if (!product.categories || product.categories.length === 0) return 'Chưa phân loại';
 		return product.categories.map(c => c.categoryName).join(', ');
+	}
+
+	// Inventory functions
+	function toggleProductSelection(productId: number): void {
+		selectedProducts.update(selected => {
+			const newSelected = new Set(selected);
+			if (newSelected.has(productId)) {
+				newSelected.delete(productId);
+			} else {
+				newSelected.add(productId);
+			}
+			return newSelected;
+		});
+	}
+
+	function openInventoryModal(): void {
+		const selected = $selectedProducts;
+		const selectedProductsData = $products.filter(product => selected.has(product.bookId));
+		
+		inventoryFormData = selectedProductsData.map(product => ({
+			bookId: product.bookId,
+			title: product.title,
+			stockQuantity: product.stockQuantity || 0,
+			quantity: 0,
+			price: 0
+		}));
+
+		showInventoryModal.set(true);
+	}
+
+	function closeInventoryModal(): void {
+		showInventoryModal.set(false);
+		inventoryFormData = [];
+		selectedProducts.set(new Set());
+		error.set('');
+	}
+
+	function handleImport(): void {
+		// Logic for import will be implemented later
+		console.log('Import data:', inventoryFormData);
+	}
+
+	function handleExport(): void {
+		// Logic for export will be implemented later
+		console.log('Export data:', inventoryFormData);
 	}
 
 	// Clear messages after 3 seconds
@@ -342,7 +395,6 @@
 			{$error}
 		</div>
 	{/if}
-
 	<!-- Action Buttons -->
 	<div class="mb-6 flex gap-4">
 		<button
@@ -363,6 +415,17 @@
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z"/>
 			</svg>
 			Thêm Danh mục
+		</button>
+
+		<button
+			on:click={openInventoryModal}
+			disabled={$selectedProducts.size === 0}
+			class="bg-purple-600 hover:bg-purple-700 text-white font-medium px-4 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+		>
+			<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+			</svg>
+			Quản lý Tồn kho ({$selectedProducts.size})
 		</button>
 	</div>
 
@@ -403,12 +466,28 @@
 		{#if $loading}
 			<div class="flex justify-center items-center py-8">
 				<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-			</div>
-		{:else}
+			</div>		{:else}
 			<div class="overflow-x-auto">
 				<table class="min-w-full divide-y divide-gray-200">
 					<thead class="bg-gray-50">
 						<tr>
+							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">								<input
+									type="checkbox"
+									class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+									checked={$selectedProducts.size === $products.length && $products.length > 0}
+									on:change={(e) => {
+										const target = e.target as HTMLInputElement;
+										if (target.checked) {
+											selectedProducts.set(new Set($products.map(p => p.bookId)));
+										} else {
+											selectedProducts.set(new Set());
+										}
+									}}
+								/>
+							</th>
+							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+								ID
+							</th>
 							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
 								Sản phẩm
 							</th>
@@ -432,6 +511,17 @@
 					<tbody class="bg-white divide-y divide-gray-200">
 						{#each $products as product}
 							<tr class="hover:bg-gray-50">
+								<td class="px-6 py-4 whitespace-nowrap">
+									<input
+										type="checkbox"
+										class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+										checked={$selectedProducts.has(product.bookId)}
+										on:change={() => toggleProductSelection(product.bookId)}
+									/>
+								</td>
+								<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+									{product.bookId}
+								</td>
 								<td class="px-6 py-4 whitespace-nowrap">
 									<div>
 										<div class="text-sm font-medium text-gray-900">{product.title}</div>
@@ -464,8 +554,7 @@
 										Xóa
 									</button>
 								</td>
-							</tr>
-						{/each}
+							</tr>						{/each}
 					</tbody>
 				</table>
 			</div>
@@ -674,9 +763,7 @@
 							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
 							required
 						/>
-					</div>
-
-					<div class="flex justify-end space-x-3 pt-4">
+					</div>					<div class="flex justify-end space-x-3 pt-4">
 						<button
 							type="button"
 							on:click={closeCategoryModal}
@@ -693,6 +780,123 @@
 						</button>
 					</div>
 				</form>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Inventory Modal -->
+{#if $showInventoryModal}
+	<div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+		<div class="relative top-20 mx-auto p-5 border w-11/12 md:w-4/5 lg:w-3/4 shadow-lg rounded-md bg-white">
+			<div class="mt-3">
+				<div class="flex justify-between items-center mb-4">
+					<h3 class="text-lg font-medium text-gray-900">
+						Quản lý Tồn kho
+					</h3>
+					<button
+						on:click={closeInventoryModal}
+						class="text-gray-400 hover:text-gray-600"
+					>
+						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+						</svg>
+					</button>
+				</div>
+
+				{#if $error}
+					<div class="p-4 bg-red-100 border border-red-400 text-red-700 rounded mb-4">
+						{$error}
+					</div>
+				{/if}
+
+				{#if inventoryFormData.length > 0}
+					<div class="overflow-x-auto">
+						<table class="min-w-full divide-y divide-gray-200">
+							<thead class="bg-gray-50">
+								<tr>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										ID
+									</th>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Tên
+									</th>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Tồn kho
+									</th>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Số lượng
+									</th>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Giá
+									</th>
+								</tr>
+							</thead>
+							<tbody class="bg-white divide-y divide-gray-200">
+								{#each inventoryFormData as item, index}
+									<tr class="hover:bg-gray-50">
+										<td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+											{item.bookId}
+										</td>
+										<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+											{item.title}
+										</td>
+										<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+											{item.stockQuantity}
+										</td>
+										<td class="px-6 py-4 whitespace-nowrap">
+											<input
+												type="number"
+												bind:value={inventoryFormData[index].quantity}
+												min="0"
+												class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+												placeholder="Nhập số lượng"
+											/>
+										</td>
+										<td class="px-6 py-4 whitespace-nowrap">
+											<input
+												type="number"
+												bind:value={inventoryFormData[index].price}
+												min="0"
+												step="1000"
+												class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+												placeholder="Nhập giá"
+											/>
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+
+					<div class="flex justify-end space-x-3 pt-6">
+						<button
+							type="button"
+							on:click={closeInventoryModal}
+							class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md"
+						>
+							Thoát
+						</button>
+						<button
+							type="button"
+							on:click={handleImport}
+							class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md"
+						>
+							Nhập
+						</button>
+						<button
+							type="button"
+							on:click={handleExport}
+							class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md"
+						>
+							Xuất
+						</button>
+					</div>
+				{:else}
+					<div class="text-center py-8">
+						<p class="text-gray-500">Không có sản phẩm nào được chọn</p>
+					</div>
+				{/if}
 			</div>
 		</div>
 	</div>

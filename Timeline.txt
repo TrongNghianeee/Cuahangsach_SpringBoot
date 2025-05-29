@@ -2,7 +2,6 @@
 - Cấu hình Spring Security (SecurityConfig.java).
 - Entity User, UserRepository, UserService.
 - Controller AuthController với các endpoint /login, /register.
-- Template Thymeleaf cho login.html và register.html với form Bootstrap.
 
 
 2. Xây dựng giao diện và chức năng quản trị ------------------ 1-2 ngày 
@@ -10,10 +9,16 @@
 - Quản lí tài khoản
 - Quản lí sản phẩm
 - Quản lí kho hàng
-- Quản lí đơn hàng
-- Báo cáo thống kê
+- Xem lịch sử nhập xuất
+- Xem báo cáo
+
+
+- Quản lí đơn hàng -- Nvien 
+- Báo cáo thống kê -- Nvien
 
 3. Xây dựng giao diện và chức năng người dùng ---------------- 1-2 ngày
+
+
 4. Xử lý lỗi và giao diện lỗi -------------------------------- 1-4 tiếng
 - Sinh code cho GlobalExceptionHandler để xử lý ngoại lệ.
 - Tạo template error.html với Bootstrap.
@@ -23,22 +28,12 @@ Lombok Annotations Support for VS Code
 
 singleton
 
-src
-├── main
-│   ├── java
-│   │   └── com
-│   │       └── example
-│   │           └── bookstore
-│   │               ├── config
-│   │               ├── controller
-│   │               ├── facade                        // Facade để giao tiếp giữa controller và service
-│   │               ├── model
-│   │               │── dto                           
-│   │               ├── repository
-│   │               ├── service
-│   │               └── BookstoreApplication.java     // Lớp chính để chạy ứng dụng Spring Boot
-                  
-npm create vite@latest front-end
+
+BookstoreApplication.java     // Lớp chính để chạy ứng dụng Spring Boot vào thư mục cấp /bookstore
+
+b2: vào /bookstore/front-end 
 
 npm install
 npm run dev
+
+truy cập http://localhost:5173/auth/login

@@ -5,12 +5,9 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.example.bookstore.dto.InventoryDTO;
 import com.example.bookstore.model.Category;
-import com.example.bookstore.model.InventoryTransaction;
 import com.example.bookstore.service.BookService;
 import com.example.bookstore.service.CategoryService;
-import com.example.bookstore.service.InventoryService;
 import com.example.bookstore.service.UserService;
 
 @Component
@@ -23,8 +20,8 @@ public class BookstoreFacade {
     @Autowired
     private CategoryService categoryService;
 
-    @Autowired
-    private InventoryService inventoryService;    
+    // @Autowired
+    // private InventoryService inventoryService;    
 
     // ===== PRODUCT MANAGEMENT METHODS =====
     
@@ -79,23 +76,23 @@ public class BookstoreFacade {
     
     // ===== INVENTORY MANAGEMENT METHODS =====
 
-    public InventoryTransaction processInventoryTransaction(InventoryDTO inventoryDTO, Integer userId) {
-        return inventoryService.processInventoryTransaction(inventoryDTO, userId);
-    }
+    // public InventoryTransaction processInventoryTransaction(InventoryDTO inventoryDTO, Integer userId) {
+    //     return inventoryService.processInventoryTransaction(inventoryDTO, userId);
+    // }
 
-    public List<InventoryDTO> getAllInventoryTransactions() {
-        return inventoryService.getAllTransactions();
-    }
+    // public List<InventoryDTO> getAllInventoryTransactions() {
+    //     return inventoryService.getAllTransactions();
+    // }
 
-    public List<InventoryDTO> getInventoryTransactionsByBookId(Integer bookId) {
-        return inventoryService.getTransactionsByBookId(bookId);
-    }
+    // public List<InventoryDTO> getInventoryTransactionsByBookId(Integer bookId) {
+    //     return inventoryService.getTransactionsByBookId(bookId);
+    // }
 
-    public Integer getCurrentStock(Integer bookId) {
-        return inventoryService.getCurrentStock(bookId);
-    }
+    // public Integer getCurrentStock(Integer bookId) {
+    //     return inventoryService.getCurrentStock(bookId);
+    // }
 
-    public InventoryDTO createInventoryDTOForBook(Integer bookId) {
-        return inventoryService.createInventoryDTOForBook(bookId);
-    }
+    // public InventoryDTO createInventoryDTOForBook(Integer bookId) {
+    //     return inventoryService.createInventoryDTOForBook(bookId);
+    // }
 }
