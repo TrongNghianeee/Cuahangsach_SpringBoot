@@ -29,4 +29,8 @@ public class AuthFacade {
     public RegistryResponse registry(RegistryRequest request) {
         return authService.registry(request);
     }
+
+    public boolean logout(String token) {
+        return authService.logout(token);
+    }
 }

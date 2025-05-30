@@ -89,4 +89,21 @@ public class AuthService {
 
         return new RegistryResponse("Đăng ký thành công");
     }
+
+    public boolean logout(String token) {
+        // For JWT tokens, we simply validate that the token is valid
+        // In a production environment, you might want to implement token blacklisting
+        try {
+            String username = jwtUtil.extractUsername(token);
+            if (username != null && jwtUtil.validateToken(token, username)) {
+                // Token is valid, logout successful
+                // In a more sophisticated implementation, you would add the token to a blacklist
+                return true;
+            }
+        } catch (Exception e) {
+            // Token is invalid or expired
+            return false;
+        }
+        return false;
+    }
 }

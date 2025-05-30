@@ -54,4 +54,13 @@ public class AuthController {
         }
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(@RequestHeader("Authorization") String token) {
+        boolean success = authFacade.logout(token.replace("Bearer ", ""));
+        if (success) {
+            return ResponseEntity.ok("Đăng xuất thành công");
+        }
+        return ResponseEntity.badRequest().body("Đăng xuất thất bại");
+    }
 }

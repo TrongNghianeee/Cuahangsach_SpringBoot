@@ -2,6 +2,8 @@ package com.example.bookstore.dto;
 
 import java.math.BigDecimal;
 
+import com.example.bookstore.model.InventoryTransaction;
+
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -14,21 +16,29 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class InventoryDTO {
-    
+
     @NotNull(message = "Vui lòng chọn sách")
     private Integer bookId;
-    
+
     @NotBlank(message = "Vui lòng chọn phương thức nhập/xuất")
-    private String transactionType; 
-    
+    private String transactionType;
+
     @NotNull(message = "Số lượng không được để trống")
     @Min(value = 1, message = "Số lượng phải lớn hơn 0")
     private Integer quantity;
-    
+
     @NotNull(message = "Giá không được để trống")
     @DecimalMin(value = "0.0", inclusive = false, message = "Giá phải lớn hơn 0")
     private BigDecimal price;
 
-    @NotNull(message = "user_id cannot be null")
-    private Integer userId;    
+    @NotNull(message = "Vui lòng chọn người dùng")
+    private Integer userId;
+
+    public InventoryDTO(InventoryTransaction transaction) {
+        this.bookId = transaction.getBook().getBookId();
+        this.transactionType = transaction.getTransactionType();
+        this.quantity = transaction.getQuantity();
+        this.price = transaction.getPriceAtTransaction();
+        this.userId = transaction.getUser().getUserId();
+    }
 }

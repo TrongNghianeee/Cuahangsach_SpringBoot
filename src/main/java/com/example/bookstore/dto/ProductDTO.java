@@ -1,9 +1,6 @@
 package com.example.bookstore.dto;
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.stream.Collectors;
-
-import com.example.bookstore.model.Category;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;

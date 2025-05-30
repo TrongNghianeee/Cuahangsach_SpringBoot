@@ -1,11 +1,14 @@
 package com.example.bookstore.facade;
 
 import com.example.bookstore.dto.CategoryDTO;
+import com.example.bookstore.dto.InventoryDTO;
 import com.example.bookstore.dto.ProductDTO;
 import com.example.bookstore.model.Book;
 import com.example.bookstore.model.Category;
+import com.example.bookstore.model.InventoryTransaction;
 import com.example.bookstore.service.BookService;
 import com.example.bookstore.service.CategoryService;
+import com.example.bookstore.service.InventoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import com.example.bookstore.dto.BookImageDTO;
@@ -21,6 +24,10 @@ public class ProductFacade {
     @Autowired
     private CategoryService categoryService;
 
+    @Autowired
+    private InventoryService inventoryService;
+
+    // Existing methods for Product
     public List<ProductDTO> getAllProductsDTO() {
         List<Book> books = bookService.getAllBooks();
         return books.stream()
@@ -47,6 +54,7 @@ public class ProductFacade {
         bookService.deleteBook(id);
     }
 
+    // Existing methods for Category
     public List<CategoryDTO> getAllCategoriesDTO() {
         List<Category> categories = categoryService.getAllCategories();
         return categories.stream()
@@ -82,6 +90,44 @@ public class ProductFacade {
         categoryService.deleteCategory(id);
     }
 
+    // Updated methods for InventoryTransaction
+    public List<InventoryDTO> createInventoryTransactions(List<InventoryDTO> inventoryDTOs) {
+        List<InventoryTransaction> transactions = inventoryService.createInventoryTransactions(inventoryDTOs);
+        return transactions.stream()
+                .map(this::mapToInventoryDTO)
+                .collect(Collectors.toList());
+    }
+
+    public InventoryDTO getInventoryTransactionByIdDTO(Integer id) {
+        InventoryTransaction transaction = inventoryService.getInventoryTransactionById(id);
+        if (transaction == null) {
+            throw new IllegalArgumentException("Giao dịch kho không tồn tại");
+        }
+        return mapToInventoryDTO(transaction);
+    }
+
+    public List<InventoryDTO> getAllInventoryTransactionsDTO() {
+        List<InventoryTransaction> transactions = inventoryService.getAllInventoryTransactions();
+        return transactions.stream()
+                .map(this::mapToInventoryDTO)
+                .collect(Collectors.toList());
+    }
+
+    public InventoryDTO updateInventoryTransaction(Integer id, InventoryDTO inventoryDTO) {
+        InventoryTransaction transaction = inventoryService.updateInventoryTransaction(id, inventoryDTO);
+        if (transaction == null) {
+            throw new IllegalArgumentException("Giao dịch kho không tồn tại");
+        }
+        return mapToInventoryDTO(transaction);
+    }
+
+    public void deleteInventoryTransaction(Integer id) {
+        if (inventoryService.getInventoryTransactionById(id) == null) {
+            throw new IllegalArgumentException("Giao dịch kho không tồn tại");
+        }
+        inventoryService.deleteInventoryTransaction(id);
+    }
+
     private ProductDTO mapToProductDTO(Book book) {
         ProductDTO dto = new ProductDTO();
         dto.setBookId(book.getBookId());
@@ -102,5 +148,15 @@ public class ProductFacade {
                 .map(Category::getCategoryId)
                 .collect(Collectors.toList()) : null);
         return dto;
+    }
+
+    private InventoryDTO mapToInventoryDTO(InventoryTransaction transaction) {
+        return new InventoryDTO(
+                transaction.getBook().getBookId(),
+                transaction.getTransactionType(),
+                transaction.getQuantity(),
+                transaction.getPriceAtTransaction(),
+                transaction.getUser().getUserId()
+        );
     }
 }
