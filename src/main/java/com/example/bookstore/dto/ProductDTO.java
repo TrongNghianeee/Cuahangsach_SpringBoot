@@ -41,27 +41,6 @@ public class ProductDTO {
     @NotEmpty(message = "Danh sách ID danh mục không được để trống")
     private List<Integer> categoryIds;
 
-    // Constructor giữ nguyên
-    // public ProductDTO(com.example.bookstore.model.Book book, List<com.example.bookstore.model.BookImage> images, List<com.example.bookstore.model.Category> categories) {
-    //     this.bookId = book.getBookId();
-    //     this.title = book.getTitle();
-    //     this.author = book.getAuthor();
-    //     this.publisher = book.getPublisher();
-    //     this.publicationYear = book.getPublicationYear();
-    //     this.description = book.getDescription();
-    //     this.price = book.getPrice();
-    //     this.stockQuantity = book.getStockQuantity();
-    //     this.images = images != null ? images.stream()
-    //         .map(BookImageDTO::new)
-    //         .collect(Collectors.toList()) : null;
-    //     this.categories = categories != null ? categories.stream()
-    //         .map(CategoryDTO::new)
-    //         .collect(Collectors.toList()) : null;
-    //     this.categoryIds = categories != null ? categories.stream()
-    //         .map(Category::getCategoryId)
-    //         .collect(Collectors.toList()) : null;
-    // }
-
     // Constructor mặc định cho deserialization
     public ProductDTO() {
     }
