@@ -39,7 +39,7 @@
 						Quản lý sản phẩm
 					</a>
 					<a href="/admin/inventory" class={getLinkClass("/admin/inventory")}>
-						Quản lý kho
+						Báo cáo & Thống kê
 					</a>
 				</nav>				<div class="flex items-center">
 					<button 

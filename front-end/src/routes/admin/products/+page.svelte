@@ -1,7 +1,7 @@
 <!-- front-end/src/routes/admin/products/+page.svelte -->
-<script lang="ts">
-	import { onMount } from 'svelte';
+<script lang="ts">	import { onMount } from 'svelte';
 	import { writable } from 'svelte/store';
+	import { authenticatedFetch } from '$lib/auth';
 	import type { Product, ProductFormData, Category, ApiResponse } from '$lib/types';
 	// Stores
 	const products = writable<Product[]>([]);
@@ -48,12 +48,11 @@
 	const CATEGORIES_API = 'http://localhost:8080/api/admin/categories';
 	const INVENTORY_API = 'http://localhost:8080/api/admin/inventory';
 	const AUTH_API = 'http://localhost:8080/api/auth';
-
 	// Functions
 	async function fetchProducts(): Promise<void> {
 		loading.set(true);
 		try {
-			const response = await fetch(API_BASE);
+			const response = await authenticatedFetch(API_BASE);
 			const result: ApiResponse<Product[]> = await response.json();
 			if (result.success && result.data) {
 				products.set(result.data);
@@ -69,7 +68,7 @@
 
 	async function fetchCategories(): Promise<void> {
 		try {
-			const response = await fetch(CATEGORIES_API);
+			const response = await authenticatedFetch(CATEGORIES_API);
 			const result: ApiResponse<Category[]> = await response.json();
 			if (result.success && result.data) {
 				categories.set(result.data);
@@ -90,12 +89,11 @@
 		loading.set(true);
 		error.set('');
 		message.set('');
-
 		try {
 			const url = $editMode ? `${API_BASE}/${editProductId}` : API_BASE;
 			const method = $editMode ? 'PUT' : 'POST';
 
-			const response = await fetch(url, {
+			const response = await authenticatedFetch(url, {
 				method,
 				headers: {
 					'Content-Type': 'application/json'
@@ -131,12 +129,11 @@
 		loading.set(true);
 		error.set('');
 		message.set('');
-
 		try {
 			const url = $editCategoryMode ? `${CATEGORIES_API}/${editCategoryId}` : CATEGORIES_API;
 			const method = $editCategoryMode ? 'PUT' : 'POST';
 
-			const response = await fetch(url, {
+			const response = await authenticatedFetch(url, {
 				method,
 				headers: {
 					'Content-Type': 'application/json'
@@ -185,13 +182,12 @@
 		editCategoryMode.set(true);
 		showCategoryModal.set(true);
 	}
-
 	async function deleteProduct(productId: number): Promise<void> {
 		if (!confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) return;
 
 		loading.set(true);
 		try {
-			const response = await fetch(`${API_BASE}/${productId}`, {
+			const response = await authenticatedFetch(`${API_BASE}/${productId}`, {
 				method: 'DELETE'
 			});
 
@@ -209,13 +205,12 @@
 			loading.set(false);
 		}
 	}
-
 	async function deleteCategory(categoryId: number): Promise<void> {
 		if (!confirm('Bạn có chắc chắn muốn xóa danh mục này?')) return;
 
 		loading.set(true);
 		try {
-			const response = await fetch(`${CATEGORIES_API}/${categoryId}`, {
+			const response = await authenticatedFetch(`${CATEGORIES_API}/${categoryId}`, {
 				method: 'DELETE'
 			});
 
@@ -351,19 +346,12 @@
 		inventoryFormData = [];
 		selectedProducts.set(new Set());		error.set('');
 	}
-
 	// Get current user info
 	async function getCurrentUser(): Promise<any> {
 		try {
-			const token = localStorage.getItem('token');
-			if (!token) {
-				throw new Error('Token không tồn tại');
-			}
-
-			const response = await fetch(`${AUTH_API}/me`, {
+			const response = await authenticatedFetch(`${AUTH_API}/me`, {
 				method: 'GET',
 				headers: {
-					'Authorization': `Bearer ${token}`,
 					'Content-Type': 'application/json'
 				}
 			});
@@ -398,9 +386,7 @@
 			if (invalidItems.length > 0) {
 				error.set('Vui lòng điền đầy đủ số lượng và giá cho tất cả sản phẩm');
 				return;
-			}
-
-			// Prepare data for API
+			}			// Prepare data for API
 			const inventoryData = inventoryFormData.map(item => ({
 				bookId: item.bookId,
 				transactionType: "Nhập",
@@ -409,12 +395,10 @@
 				userId: currentUser.userId
 			}));
 
-			const token = localStorage.getItem('token');
-			const response = await fetch(INVENTORY_API, {
+			const response = await authenticatedFetch(INVENTORY_API, {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
-					'Authorization': `Bearer ${token}`
+					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify(inventoryData)
 			});
@@ -464,9 +448,7 @@
 				const productNames = insufficientStock.map(item => item.title).join(', ');
 				error.set(`Không đủ hàng tồn kho cho các sản phẩm: ${productNames}`);
 				return;
-			}
-
-			// Prepare data for API
+			}			// Prepare data for API
 			const inventoryData = inventoryFormData.map(item => ({
 				bookId: item.bookId,
 				transactionType: "Xuất",
@@ -475,12 +457,10 @@
 				userId: currentUser.userId
 			}));
 
-			const token = localStorage.getItem('token');
-			const response = await fetch(INVENTORY_API, {
+			const response = await authenticatedFetch(INVENTORY_API, {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
-					'Authorization': `Bearer ${token}`
+					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify(inventoryData)
 			});

@@ -40,6 +40,41 @@ export function getToken(): string | null {
     return localStorage.getItem('token');
 }
 
+// Utility function to create authenticated headers
+export function getAuthHeaders(): Record<string, string> {
+    const userToken = getToken();
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+    };
+    
+    if (userToken) {
+        headers['Authorization'] = `Bearer ${userToken}`;
+    }
+    
+    return headers;
+}
+
+// Authenticated fetch wrapper
+export async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
+    const headers = getAuthHeaders();
+    
+    const response = await fetch(url, {
+        ...options,
+        headers: {
+            ...headers,
+            ...options.headers
+        }
+    });
+    
+    // If unauthorized, redirect to login
+    if (response.status === 401) {
+        await logout();
+        throw new Error('Unauthorized - redirecting to login');
+    }
+    
+    return response;
+}
+
 export interface CurrentUser {
     userId: number;
     username: string;

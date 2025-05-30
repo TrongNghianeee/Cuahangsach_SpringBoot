@@ -1,7 +1,7 @@
 <!-- front-end/src/routes/admin/accounts/+page.svelte -->
-<script lang="ts">
-	import { onMount } from 'svelte';
+<script lang="ts">	import { onMount } from 'svelte';
 	import { writable } from 'svelte/store';
+	import { authenticatedFetch } from '$lib/auth';
 	import type { User, UserFormData, ApiResponse } from '$lib/types';
 
 	// Stores
@@ -27,12 +27,11 @@
 	let editUserId: number | null = null;
 
 	// API Base URL
-	const API_BASE = 'http://localhost:8080/api/admin/users';
-	// Functions
+	const API_BASE = 'http://localhost:8080/api/admin/users';	// Functions
 	async function fetchUsers(): Promise<void> {
 		loading.set(true);
 		try {
-			const response = await fetch(API_BASE);
+			const response = await authenticatedFetch(API_BASE);
 			const result: ApiResponse<User[]> = await response.json();
 			if (result.success && result.data) {
 				users.set(result.data);
@@ -57,12 +56,11 @@
 		loading.set(true);
 		error.set('');
 		message.set('');
-
 		try {
 			const url = $editMode ? `${API_BASE}/${editUserId}` : API_BASE;
 			const method = $editMode ? 'PUT' : 'POST';
 
-			const response = await fetch(url, {
+			const response = await authenticatedFetch(url, {
 				method,
 				headers: {
 					'Content-Type': 'application/json'
@@ -101,11 +99,10 @@
 		editUserId = user.userId;
 		editMode.set(true);
 		showModal.set(true);
-	}
-	async function toggleUserStatus(userId: number, status: string): Promise<void> {
+	}	async function toggleUserStatus(userId: number, status: string): Promise<void> {
 		loading.set(true);
 		try {
-			const response = await fetch(`${API_BASE}/${userId}/status`, {
+			const response = await authenticatedFetch(`${API_BASE}/${userId}/status`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json'
