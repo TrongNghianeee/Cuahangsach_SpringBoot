@@ -93,12 +93,14 @@
 			{$error}
 		</div>
 	{/if}
+
 	<!-- Debug Info (remove this in production) -->
 	<!-- <div class="mb-4 p-4 bg-blue-100 border border-blue-400 text-blue-700 rounded">
 		<h4 class="font-bold">Debug Info:</h4>
 		<p>Loading: {$loading}</p>
 		<p>Error: {$error}</p>
 		<p>Transactions Count: {$inventoryTransactions.length}</p>
+		<p>Transactions Data: {JSON.stringify($inventoryTransactions)}</p>
 	</div> -->
 
 	<!-- Transaction Table -->
