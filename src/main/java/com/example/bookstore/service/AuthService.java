@@ -38,15 +38,14 @@ public class AuthService {
             }
         }
         return null;
-    }
-
-    public UserDTO getUserFromToken(String token) {
+    }    public UserDTO getUserFromToken(String token) {
         String username = jwtUtil.extractUsername(token);
         Optional<User> userOptional = userRepository.findByUsername(username);
         if (userOptional.isPresent()) {
             User user = userOptional.get();
             if (jwtUtil.validateToken(token, user.getUsername())) {
                 UserDTO userDTO = new UserDTO();
+                userDTO.setUserId(user.getUserId());
                 userDTO.setUsername(user.getUsername());
                 userDTO.setEmail(user.getEmail());
                 userDTO.setFullName(user.getFullName());

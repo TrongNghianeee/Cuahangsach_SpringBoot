@@ -43,10 +43,11 @@
 	let editProductId: number | null = null;
 	let editCategoryId: number | null = null;
 
-	// API Base URLs
-	// API Base URLs
+	// API Base URLs	// API Base URLs
 	const API_BASE = 'http://localhost:8080/api/admin/products';
 	const CATEGORIES_API = 'http://localhost:8080/api/admin/categories';
+	const INVENTORY_API = 'http://localhost:8080/api/admin/inventory';
+	const AUTH_API = 'http://localhost:8080/api/auth';
 
 	// Functions
 	async function fetchProducts(): Promise<void> {
@@ -348,18 +349,155 @@
 	function closeInventoryModal(): void {
 		showInventoryModal.set(false);
 		inventoryFormData = [];
-		selectedProducts.set(new Set());
-		error.set('');
+		selectedProducts.set(new Set());		error.set('');
 	}
 
-	function handleImport(): void {
-		// Logic for import will be implemented later
-		console.log('Import data:', inventoryFormData);
+	// Get current user info
+	async function getCurrentUser(): Promise<any> {
+		try {
+			const token = localStorage.getItem('token');
+			if (!token) {
+				throw new Error('Token không tồn tại');
+			}
+
+			const response = await fetch(`${AUTH_API}/me`, {
+				method: 'GET',
+				headers: {
+					'Authorization': `Bearer ${token}`,
+					'Content-Type': 'application/json'
+				}
+			});
+
+			if (response.ok) {
+				return await response.json();
+			} else {
+				throw new Error('Không thể lấy thông tin người dùng');
+			}
+		} catch (err) {
+			console.error('Error getting current user:', err);
+			throw err;
+		}
 	}
 
-	function handleExport(): void {
-		// Logic for export will be implemented later
-		console.log('Export data:', inventoryFormData);
+	async function handleImport(): Promise<void> {
+		try {
+			loading.set(true);
+			error.set('');
+
+			// Get current user
+			const currentUser = await getCurrentUser();
+			if (!currentUser.userId) {
+				throw new Error('Không thể xác định người dùng hiện tại');
+			}
+
+			// Validate form data
+			const invalidItems = inventoryFormData.filter(item => 
+				!item.quantity || item.quantity <= 0 || !item.price || item.price <= 0
+			);
+
+			if (invalidItems.length > 0) {
+				error.set('Vui lòng điền đầy đủ số lượng và giá cho tất cả sản phẩm');
+				return;
+			}
+
+			// Prepare data for API
+			const inventoryData = inventoryFormData.map(item => ({
+				bookId: item.bookId,
+				transactionType: "Nhập",
+				quantity: item.quantity,
+				price: item.price,
+				userId: currentUser.userId
+			}));
+
+			const token = localStorage.getItem('token');
+			const response = await fetch(INVENTORY_API, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${token}`
+				},
+				body: JSON.stringify(inventoryData)
+			});
+
+			if (response.ok) {
+				message.set(`Nhập hàng thành công cho ${inventoryData.length} sản phẩm!`);
+				closeInventoryModal();
+				await fetchProducts(); // Refresh product list
+			} else {
+				const errorData = await response.json();
+				error.set(errorData.message || 'Có lỗi xảy ra khi nhập hàng');
+			}
+		} catch (err) {
+			error.set('Lỗi kết nối: ' + (err as Error).message);
+		} finally {
+			loading.set(false);
+		}
+	}
+
+	async function handleExport(): Promise<void> {
+		try {
+			loading.set(true);
+			error.set('');
+
+			// Get current user
+			const currentUser = await getCurrentUser();
+			if (!currentUser.userId) {
+				throw new Error('Không thể xác định người dùng hiện tại');
+			}
+
+			// Validate form data
+			const invalidItems = inventoryFormData.filter(item => 
+				!item.quantity || item.quantity <= 0 || !item.price || item.price <= 0
+			);
+
+			if (invalidItems.length > 0) {
+				error.set('Vui lòng điền đầy đủ số lượng và giá cho tất cả sản phẩm');
+				return;
+			}
+
+			// Check stock availability
+			const insufficientStock = inventoryFormData.filter(item => 
+				item.quantity > item.stockQuantity
+			);
+
+			if (insufficientStock.length > 0) {
+				const productNames = insufficientStock.map(item => item.title).join(', ');
+				error.set(`Không đủ hàng tồn kho cho các sản phẩm: ${productNames}`);
+				return;
+			}
+
+			// Prepare data for API
+			const inventoryData = inventoryFormData.map(item => ({
+				bookId: item.bookId,
+				transactionType: "Xuất",
+				quantity: item.quantity,
+				price: item.price,
+				userId: currentUser.userId
+			}));
+
+			const token = localStorage.getItem('token');
+			const response = await fetch(INVENTORY_API, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${token}`
+				},
+				body: JSON.stringify(inventoryData)
+			});
+
+			if (response.ok) {
+				message.set(`Xuất hàng thành công cho ${inventoryData.length} sản phẩm!`);
+				closeInventoryModal();
+				await fetchProducts(); // Refresh product list
+			} else {
+				const errorData = await response.json();
+				error.set(errorData.message || 'Có lỗi xảy ra khi xuất hàng');
+			}
+		} catch (err) {
+			error.set('Lỗi kết nối: ' + (err as Error).message);
+		} finally {
+			loading.set(false);
+		}
 	}
 
 	// Clear messages after 3 seconds
@@ -867,29 +1005,46 @@
 								{/each}
 							</tbody>
 						</table>
-					</div>
-
-					<div class="flex justify-end space-x-3 pt-6">
+					</div>					<div class="flex justify-end space-x-3 pt-6">
 						<button
 							type="button"
 							on:click={closeInventoryModal}
-							class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md"
+							disabled={$loading}
+							class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
 						>
 							Thoát
 						</button>
 						<button
 							type="button"
 							on:click={handleImport}
-							class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md"
+							disabled={$loading}
+							class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
 						>
-							Nhập
+							{#if $loading}
+								<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+									<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+								</svg>
+								Đang nhập...
+							{:else}
+								Nhập
+							{/if}
 						</button>
 						<button
 							type="button"
 							on:click={handleExport}
-							class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md"
+							disabled={$loading}
+							class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
 						>
-							Xuất
+							{#if $loading}
+								<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+									<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+								</svg>
+								Đang xuất...
+							{:else}
+								Xuất
+							{/if}
 						</button>
 					</div>
 				{:else}

@@ -7,6 +7,8 @@ import lombok.Data;
 
 @Data
 public class UserDTO {
+    private Integer userId;
+
     @NotBlank(message = "Tên người dùng không được để trống")
     @Size(min = 3, max = 50, message = "Tên người dùng phải từ 3 đến 50 ký tự")
     private String username;
