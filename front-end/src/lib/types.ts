@@ -58,6 +58,19 @@ export interface Category {
 	categoryName: string;
 }
 
+export interface InventoryDTO {
+	transactionId?: number;
+	bookId: number;
+	transactionType: 'Nhập' | 'Xuất';
+	quantity: number;
+	price: number;
+	userId: number;
+	transactionDate?: string;
+	// Additional info for display
+	bookTitle?: string;
+	username?: string;
+}
+
 export interface ApiResponse<T = any> {
 	success: boolean;
 	data?: T;
