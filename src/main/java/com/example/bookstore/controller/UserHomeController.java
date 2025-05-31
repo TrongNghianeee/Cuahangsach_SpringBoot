@@ -9,12 +9,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.bookstore.dto.CategoryDTO;
 import com.example.bookstore.dto.ProductDTO;
+import com.example.bookstore.dto.UserDTO;
+import com.example.bookstore.dto.UserResponseDTO;
+import com.example.bookstore.facade.AuthFacade;
 import com.example.bookstore.facade.ProductFacade;
+import com.example.bookstore.facade.UserFacade;
 
 @RestController
 @RequestMapping("/api/user")
@@ -22,6 +29,12 @@ public class UserHomeController {
 
     @Autowired
     private ProductFacade productFacade;
+
+    @Autowired
+    private UserFacade userFacade;
+
+    @Autowired
+    private AuthFacade authFacade;
 
     /**
      * GET /api/user/books - Lấy danh sách tất cả sách cho user homepage
@@ -109,6 +122,42 @@ public class UserHomeController {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("message", "Lỗi khi lấy thông tin danh mục: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }    /**
+     * PUT /api/user/profile - Cập nhật thông tin hồ sơ người dùng
+     */
+    @PutMapping("/profile")
+    public ResponseEntity<Map<String, Object>> updateProfile(
+            @RequestHeader("Authorization") String token, 
+            @RequestBody UserDTO userDTO) {
+        try {
+            // Lấy thông tin user hiện tại từ token
+            UserDTO currentUser = authFacade.getCurrentUser(token.replace("Bearer ", ""));
+            if (currentUser == null) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", false);
+                response.put("message", "Token không hợp lệ");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            }
+
+            // Cập nhật thông tin user thông qua facade
+            UserResponseDTO updatedUser = userFacade.updateUserProfile(currentUser.getUserId(), userDTO);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", updatedUser);
+            response.put("message", "Cập nhật thông tin thành công");
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        } catch (Exception e) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Lỗi khi cập nhật thông tin: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }

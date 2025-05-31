@@ -51,6 +51,17 @@ public class UserFacade {
         return new UserResponseDTO(user);
     }
 
+    // Cập nhật thông tin hồ sơ user (không cho phép thay đổi role và status)
+    public UserResponseDTO updateUserProfile(Integer userId, UserDTO userDTO) {
+        // Đảm bảo không thể thay đổi role và status từ user profile
+        userDTO.setRole(null);
+        userDTO.setStatus(null);
+        userDTO.setUserId(userId);
+        
+        User user = userService.updateUser(userId, userDTO);
+        return new UserResponseDTO(user);
+    }
+
     // Thay đổi trạng thái user
     public void toggleUserStatus(Integer id, String status) {
         userService.toggleUserStatus(id, status);
