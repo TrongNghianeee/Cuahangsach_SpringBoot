@@ -9,6 +9,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -35,7 +36,8 @@ public class SecurityConfig {
                 config.setAllowCredentials(true);
                 return config;
             }))
-            .csrf(csrf -> csrf.disable()) // Vô hiệu hóa CSRF cho API            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Không dùng session
+            .csrf(csrf -> csrf.disable()) // Vô hiệu hóa CSRF cho API
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Không dùng session
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll() // Cho phép truy cập công khai /api/auth/**
                 .requestMatchers("/api/user/**").permitAll() // Cho phép truy cập công khai /api/user/**

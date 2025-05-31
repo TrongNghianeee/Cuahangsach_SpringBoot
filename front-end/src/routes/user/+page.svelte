@@ -8,6 +8,8 @@
 	const categories = writable<Category[]>([]);
 	const loading = writable<boolean>(false);
 	const error = writable<string>('');
+	const currentUser = writable<any>(null);
+	const addingToCart = writable<Set<number>>(new Set());
 
 	// Filter states
 	const searchTerm = writable<string>('');
@@ -17,6 +19,7 @@
 
 	// API URLs
 	const API_BASE = 'http://localhost:8080/api/user';
+	const AUTH_API = 'http://localhost:8080/api/auth';
 
 	// Fetch books from API
 	async function fetchBooks(): Promise<void> {
@@ -38,7 +41,6 @@
 			loading.set(false);
 		}
 	}
-
 	// Fetch categories from API
 	async function fetchCategories(): Promise<void> {
 		try {
@@ -52,6 +54,70 @@
 			}
 		} catch (err) {
 			console.error('Error fetching categories:', err);
+		}
+	}
+	// Get current user info
+	async function getCurrentUser(): Promise<void> {
+		try {
+			const token = localStorage.getItem('token');
+			if (!token) return;
+
+			const response = await fetch(`${AUTH_API}/me`, {
+				headers: {
+					'Authorization': `Bearer ${token}`,
+					'Content-Type': 'application/json'
+				}
+			});
+
+			if (response.ok) {
+				const userData = await response.json();
+				// API /me trả về trực tiếp UserDTO, không có wrapper success/data
+				currentUser.set(userData);
+			}
+		} catch (err) {
+			console.error('Error fetching current user:', err);
+		}
+	}
+
+	// Add book to shopping cart
+	async function addToCart(bookId: number): Promise<void> {
+		const user = $currentUser;
+		if (!user) {
+			alert('Vui lòng đăng nhập để thêm sách vào giỏ hàng');
+			return;
+		}
+
+		// Add bookId to loading set
+		addingToCart.update(set => new Set(set).add(bookId));
+
+		try {
+			const token = localStorage.getItem('token');
+			const response = await fetch(`${API_BASE}/shoppingcart/${bookId}`, {
+				method: 'POST',
+				headers: {
+					'Authorization': `Bearer ${token}`,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ userId: user.userId })
+			});
+
+			const result = await response.json();
+
+			if (result.success) {
+				alert('Đã thêm sách vào giỏ hàng thành công!');
+			} else {
+				alert(result.message || 'Có lỗi xảy ra khi thêm sách vào giỏ hàng');
+			}
+		} catch (err) {
+			console.error('Error adding to cart:', err);
+			alert('Không thể thêm sách vào giỏ hàng');
+		} finally {
+			// Remove bookId from loading set
+			addingToCart.update(set => {
+				const newSet = new Set(set);
+				newSet.delete(bookId);
+				return newSet;
+			});
 		}
 	}
 
@@ -129,13 +195,12 @@
 		selectedCategory.set('');
 		sortBy.set('');
 		stockFilter.set('');
-	}
-	onMount(async () => {
+	}	onMount(async () => {
 		loading.set(true);
 
 		try {
-			// Gọi API thật từ UserHomeController
-			await Promise.all([fetchBooks(), fetchCategories()]);
+			// Gọi API thật từ UserHomeController và lấy thông tin user
+			await Promise.all([fetchBooks(), fetchCategories(), getCurrentUser()]);
 		} catch (err) {
 			console.error('Error loading data:', err);
 			error.set('Không thể tải dữ liệu từ server');
@@ -398,16 +463,22 @@
 											{/if}
 										</div>
 									</div>
-								{/if}
-								<div class="flex items-center justify-between">
+								{/if}								<div class="flex items-center justify-between">
 									<span class="text-lg font-bold text-blue-600">{formatPrice(book.price)}</span>
 									{#if book.stockQuantity !== undefined && book.stockQuantity > 0}
 										<button
-											class="rounded bg-blue-600 px-3 py-1 text-sm text-white transition-colors duration-200 hover:bg-blue-700"
-											disabled
-											title="Chức năng thêm vào giỏ hàng chưa được triển khai"
+											class="rounded bg-blue-600 px-3 py-1 text-sm text-white transition-colors duration-200 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-1"
+											disabled={$addingToCart.has(book.bookId)}
+											on:click={() => addToCart(book.bookId)}
 										>
-											Thêm vào giỏ
+											{#if $addingToCart.has(book.bookId)}
+												<svg class="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+												</svg>
+												Đang thêm...
+											{:else}
+												Thêm vào giỏ
+											{/if}
 										</button>
 									{:else}
 										<span class="rounded bg-gray-300 px-3 py-1 text-sm text-gray-600">

@@ -71,6 +71,17 @@ export interface InventoryDTO {
 	username?: string;
 }
 
+export interface ShoppingCartItem {
+	userId: number;
+	bookId: number;
+	bookTitle: string;
+	bookAuthor?: string;
+	bookPublisher?: string;
+	bookDescription?: string;
+	bookPrice: number;
+	stockQuantity: number;
+}
+
 export interface ApiResponse<T = any> {
 	success: boolean;
 	data?: T;
