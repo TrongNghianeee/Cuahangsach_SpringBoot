@@ -1,10 +1,10 @@
-1. Xây dựng chức năng đăng nhập và đăng ký ------------------- 1-4 tiếng
+1. Xây dựng chức năng đăng nhập và đăng ký
 - Cấu hình Spring Security (SecurityConfig.java).
 - Entity User, UserRepository, UserService.
 - Controller AuthController với các endpoint /login, /register.
 
 
-2. Xây dựng giao diện và chức năng quản trị ------------------ 1-2 ngày 
+2. Xây dựng giao diện và chức năng quản trị
 - Tổng quan
 - Quản lí tài khoản
 - Quản lí sản phẩm
@@ -16,13 +16,10 @@
 - Quản lí đơn hàng -- Nvien 
 - Báo cáo thống kê -- Nvien
 
-3. Xây dựng giao diện và chức năng người dùng ---------------- 1-2 ngày
+3. Xây dựng giao diện và chức năng người dùng
 
 
-4. Xử lý lỗi và giao diện lỗi -------------------------------- 1-4 tiếng
-- Sinh code cho GlobalExceptionHandler để xử lý ngoại lệ.
-- Tạo template error.html với Bootstrap.
-
+.\mvnw clean install //fix khi xóa controller xóa taget biên dịch lại
 Lombok Annotations Support for VS Code
 
 
