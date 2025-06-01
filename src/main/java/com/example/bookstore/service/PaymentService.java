@@ -26,11 +26,15 @@ public class PaymentService {
     // Get payment by ID
     public Optional<Payment> getPaymentById(Integer paymentId) {
         return paymentRepository.findById(paymentId);
-    }
-
-    // Get payments by order ID
+    }    // Get payments by order ID
     public List<Payment> getPaymentsByOrderId(Integer orderId) {
         return paymentRepository.findByOrderId(orderId);
+    }
+
+    // Get single payment by order ID (first payment for the order)
+    public Payment getPaymentByOrderId(Integer orderId) {
+        List<Payment> payments = paymentRepository.findByOrderId(orderId);
+        return payments.isEmpty() ? null : payments.get(0);
     }
 
     // Get payments by payment method
@@ -51,6 +55,12 @@ public class PaymentService {
     // Sum payment amounts by order ID
     public BigDecimal sumPaymentAmountsByOrderId(Integer orderId) {
         return paymentRepository.sumAmountByOrderId(orderId);
+    }
+
+    // Save payment (for direct entity saving)
+    @Transactional
+    public Payment save(Payment payment) {
+        return paymentRepository.save(payment);
     }
 
     // Create payment - placeholder for future implementation

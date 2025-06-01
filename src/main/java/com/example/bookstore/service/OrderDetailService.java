@@ -40,6 +40,10 @@ public class OrderDetailService {
     // Count order details by order ID
     public Long countOrderDetailsByOrderId(Integer orderId) {
         return orderDetailRepository.countByOrderId(orderId);
+    }    // Save order detail (for direct entity saving)
+    @Transactional
+    public OrderDetail save(OrderDetail orderDetail) {
+        return orderDetailRepository.save(orderDetail);
     }
 
     // Create order detail - placeholder for future implementation

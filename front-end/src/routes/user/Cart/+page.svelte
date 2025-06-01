@@ -6,10 +6,13 @@
 	// Stores
 	const cartItems = writable<ShoppingCartItem[]>([]);
 	const loading = writable<boolean>(false);
-	const error = writable<string>('');
-	const currentUser = writable<any>(null);
+	const error = writable<string>('');	const currentUser = writable<any>(null);
 	const removingItems = writable<Set<number>>(new Set());
 	const itemQuantities = writable<Map<number, number>>(new Map());
+	
+	// Checkout form data
+	const shippingAddress = writable<string>('');
+	const paymentMethod = writable<string>('COD'); // Default to Cash on Delivery
 
 	// API URLs
 	const API_BASE = 'http://localhost:8080/api/user';
@@ -34,6 +37,12 @@
 				console.log('Current user from /me API:', result);
 				// API /me trả về trực tiếp UserDTO, không có wrapper success/data
 				currentUser.set(result);
+				
+				// Auto-fill shipping address if user has address
+				if (result.address) {
+					shippingAddress.set(result.address);
+				}
+				
 				await fetchCartItems(result.userId);
 			} else {
 				error.set('Không thể lấy thông tin người dùng');
@@ -137,12 +146,86 @@
 	function getTotalQuantity(): number {
 		return Array.from($itemQuantities.values()).reduce((total, quantity) => total + quantity, 0);
 	}
-
 	function formatPrice(price: number): string {
 		return new Intl.NumberFormat('vi-VN', {
 			style: 'currency',
 			currency: 'VND'
 		}).format(price);
+	}
+	// Handle checkout
+	async function handleCheckout(): Promise<void> {
+		if (!$shippingAddress.trim()) {
+			alert('Vui lòng nhập địa chỉ giao hàng');
+			return;
+		}
+
+		if ($cartItems.length === 0) {
+			alert('Giỏ hàng trống');
+			return;
+		}
+
+		// Show confirmation dialog first
+		const confirmMessage = `Xác nhận đặt hàng:\n\n` +
+			`Tổng tiền: ${formatPrice(getTotalPrice())}\n` +
+			`Địa chỉ giao hàng: ${$shippingAddress}\n` +
+			`Phương thức thanh toán: ${$paymentMethod === 'COD' ? 'Tiền mặt khi nhận hàng' : 'Chuyển khoản ngân hàng'}\n` +
+			`Số lượng sản phẩm: ${getTotalQuantity()}\n\n` +
+			`Bạn có muốn tiếp tục?`;
+		
+		if (!confirm(confirmMessage)) {
+			return;
+		}
+
+		// Prepare checkout data
+		const checkoutData = {
+			userId: $currentUser.userId,
+			totalAmount: getTotalPrice(),
+			shippingAddress: $shippingAddress.trim(),
+			paymentMethod: $paymentMethod,
+			items: $cartItems.map(item => ({
+				bookId: item.bookId,
+				quantity: $itemQuantities.get(item.bookId) || 1,
+				price: item.bookPrice,
+				bookTitle: item.bookTitle,
+				bookAuthor: item.bookAuthor
+			}))
+		};
+
+		console.log('Checkout data to be sent:', checkoutData);
+		
+		try {
+			loading.set(true);
+			const token = localStorage.getItem('token');
+			const response = await fetch(`${API_BASE}/payment/checkout`, {
+				method: 'POST',
+				headers: {
+					'Authorization': `Bearer ${token}`,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(checkoutData)
+			});
+
+			const result = await response.json();
+
+			if (result.success) {
+				alert('Đặt hàng thành công! Cảm ơn bạn đã mua hàng.');
+				console.log('Order created:', result.data);
+				
+				// Clear cart items from state
+				cartItems.set([]);
+				itemQuantities.set(new Map());
+				
+				// Optionally redirect to order history or confirmation page
+				// window.location.href = '/user/orders';
+			} else {
+				alert(`Đặt hàng thất bại: ${result.message}`);
+			}
+		} catch (err) {
+			console.error('Error during checkout:', err);
+			alert('Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.');
+		} finally {
+			loading.set(false);
+		}
 	}
 
 	onMount(async () => {
@@ -300,23 +383,119 @@
 								<span>Tổng cộng</span>
 								<span class="text-lg">{formatPrice(getTotalPrice())}</span>
 							</div>
+						</div>					</div>
+
+					<!-- Shipping Address Section -->
+					<div class="mt-6 border-t border-gray-200 pt-6">
+						<h3 class="text-sm font-medium text-gray-900 mb-3">Địa chỉ giao hàng</h3>
+						<div class="space-y-3">
+							<textarea
+								bind:value={$shippingAddress}
+								placeholder="Nhập địa chỉ giao hàng của bạn..."
+								rows="3"
+								class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm"
+								required
+							></textarea>
+							{#if $currentUser && $currentUser.address && $shippingAddress !== $currentUser.address}
+								<button
+									type="button"
+									on:click={() => shippingAddress.set($currentUser.address)}
+									class="text-xs text-blue-600 hover:text-blue-800 underline"
+								>
+									Sử dụng địa chỉ mặc định
+								</button>
+							{/if}
 						</div>
 					</div>
 
-					<div class="mt-6 space-y-3">
+					<!-- Payment Method Section -->
+					<div class="mt-6 border-t border-gray-200 pt-6">
+						<h3 class="text-sm font-medium text-gray-900 mb-3">Phương thức thanh toán</h3>
+						<div class="space-y-3">
+							<label class="flex items-center space-x-3 cursor-pointer">
+								<input
+									type="radio"
+									bind:group={$paymentMethod}
+									value="COD"
+									class="form-radio h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+								/>
+								<div class="flex items-center space-x-2">
+									<svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+									</svg>
+									<span class="text-sm font-medium">Tiền mặt khi nhận hàng (COD)</span>
+								</div>
+							</label>
+							
+							<label class="flex items-center space-x-3 cursor-pointer">
+								<input
+									type="radio"
+									bind:group={$paymentMethod}
+									value="Bank Transfer"
+									class="form-radio h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+								/>
+								<div class="flex items-center space-x-2">
+									<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+									</svg>
+									<span class="text-sm font-medium">Chuyển khoản ngân hàng</span>
+								</div>
+							</label>
+						</div>
+					</div>					<div class="mt-6 space-y-3">
 						<button 
-							class="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition-colors duration-200 font-medium"
-							disabled
-							title="Chức năng thanh toán chưa được triển khai"
+							class="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition-colors duration-200 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
+							disabled={!$shippingAddress.trim()}
+							on:click={handleCheckout}
+							title={!$shippingAddress.trim() ? "Vui lòng nhập địa chỉ giao hàng" : "Tiến hành thanh toán"}
 						>
-							Thanh toán
+							{#if !$shippingAddress.trim()}
+								Vui lòng nhập địa chỉ giao hàng
+							{:else}
+								Thanh toán ({formatPrice(getTotalPrice())})
+							{/if}
 						</button>
 						<a href="/user" class="block w-full text-center py-3 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-200">
 							Tiếp tục mua sắm
 						</a>
 					</div>
 				</div>
-			</div>
-		</div>
+			</div>		</div>
 	{/if}
 </div>
+
+<style>
+	/* Custom radio button styling */
+	.form-radio {
+		appearance: none;
+		width: 1rem;
+		height: 1rem;
+		border: 2px solid #d1d5db;
+		border-radius: 50%;
+		background-color: white;
+		position: relative;
+		cursor: pointer;
+	}
+	
+	.form-radio:checked {
+		border-color: #2563eb;
+		background-color: #2563eb;
+	}
+	
+	.form-radio:checked::after {
+		content: '';
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: 0.25rem;
+		height: 0.25rem;
+		border-radius: 50%;
+		background-color: white;
+	}
+	
+	.form-radio:focus {
+		outline: none;
+		box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+	}
+</style>

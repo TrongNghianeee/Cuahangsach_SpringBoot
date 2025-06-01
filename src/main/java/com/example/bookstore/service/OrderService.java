@@ -50,6 +50,10 @@ public class OrderService {
     // Count orders by status
     public Long countOrdersByStatus(String status) {
         return orderRepository.countByStatus(status);
+    }    // Save order (for direct entity saving)
+    @Transactional
+    public Order save(Order order) {
+        return orderRepository.save(order);
     }
 
     // Create order - placeholder for future implementation

@@ -131,4 +131,20 @@ public class BookService {
     public List<Book> searchBooks(String keyword) {
         return bookRepository.findByTitleContainingIgnoreCase(keyword);
     }
+    
+    /**
+     * Update book stock quantity
+     */
+    @Transactional
+    public void updateBookStock(Integer bookId, Integer newStockQuantity) {
+        Book book = bookRepository.findById(bookId)
+            .orElseThrow(() -> new IllegalArgumentException("Sách không tồn tại với ID: " + bookId));
+        
+        if (newStockQuantity < 0) {
+            throw new IllegalArgumentException("Số lượng tồn kho không thể âm");
+        }
+        
+        book.setStockQuantity(newStockQuantity);
+        bookRepository.save(book);
+    }
 }
