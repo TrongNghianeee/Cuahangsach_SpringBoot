@@ -35,7 +35,6 @@ public class Payment {
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
-
     @Column(name = "payment_method", nullable = false, length = 50)
     private String paymentMethod;
 }
