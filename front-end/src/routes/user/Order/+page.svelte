@@ -1,50 +1,89 @@
 <!-- front-end/src/routes/user/Order/+page.svelte -->
 <script lang="ts">
-	// Mock order data for demonstration
-	let orders = [
-		{
-			id: 1,
-			orderNumber: "DH001",
-			date: "2024-03-15",
-			status: "delivered",
-			total: 430000,
-			items: [
-				{ title: "Sách Lập trình Web", quantity: 2, price: 250000 },
-				{ title: "Cơ sở dữ liệu nâng cao", quantity: 1, price: 180000 }
-			]
-		},
-		{
-			id: 2,
-			orderNumber: "DH002",
-			date: "2024-03-18",
-			status: "shipping",
-			total: 320000,
-			items: [
-				{ title: "Thuật toán và cấu trúc dữ liệu", quantity: 1, price: 320000 }
-			]
-		},
-		{
-			id: 3,
-			orderNumber: "DH003",
-			date: "2024-03-20",
-			status: "processing",
-			total: 150000,
-			items: [
-				{ title: "Học Machine Learning cơ bản", quantity: 1, price: 150000 }
-			]
-		}
-	];
+	import { onMount } from 'svelte';
+	import { authenticatedFetch, isAuthenticated } from '$lib/auth';
+	import { goto } from '$app/navigation';
+	
+	// Order interface matching the backend DTO structure
+	interface OrderDetail {
+		orderDetailId: number;
+		orderId: number;
+		bookId: number;
+		bookTitle: string;
+		bookAuthor: string;
+		bookImageUrl?: string;
+		quantity: number;
+		priceAtOrder: number;
+		subtotal: number;
+	}
 
+	interface Order {
+		orderId: number;
+		userId: number;
+		username: string;
+		totalAmount: number;
+		shippingAddress: string;
+		paymentMethod: string;
+		status: string;
+		orderDate: string;
+		orderDetails: OrderDetail[];
+	}
+
+	let orders: Order[] = [];
+	let loading = true;
+	let error = '';
+
+	// Load orders on component mount
+	onMount(async () => {
+		// Check authentication
+		if (!isAuthenticated()) {
+			goto('/auth/login');
+			return;
+		}
+		
+		await fetchOrders();
+	});
+
+	async function fetchOrders() {
+		try {
+			loading = true;
+			error = '';
+			
+			const response = await authenticatedFetch('http://localhost:8080/api/user/payment/orders', {
+				method: 'GET'
+			});
+
+			const result = await response.json();
+			
+			if (result.success) {
+				orders = result.data || [];
+			} else {
+				error = result.message || 'Không thể tải danh sách đơn hàng';
+			}
+		} catch (err) {
+			console.error('Error fetching orders:', err);
+			error = 'Có lỗi xảy ra khi tải danh sách đơn hàng';
+		} finally {
+			loading = false;
+		}
+	}
 	function getStatusColor(status: string): string {
 		switch (status) {
-			case 'delivered':
+			case 'Đã giao hàng':
+			case 'Delivered':
 				return 'bg-green-100 text-green-800';
-			case 'shipping':
+			case 'Đang giao hàng':
+			case 'Shipped':
 				return 'bg-blue-100 text-blue-800';
-			case 'processing':
+			case 'Đang xử lý':
+			case 'Processing':
 				return 'bg-yellow-100 text-yellow-800';
-			case 'cancelled':
+			case 'Đã hủy':
+			case 'Cancelled':
 				return 'bg-red-100 text-red-800';
+			case 'Đã xác nhận':
+			case 'Confirmed':
+				return 'bg-indigo-100 text-indigo-800';
 			default:
 				return 'bg-gray-100 text-gray-800';
 		}
@@ -52,16 +91,23 @@
 
 	function getStatusText(status: string): string {
 		switch (status) {
-			case 'delivered':
+			case 'Đã giao hàng':
+			case 'Delivered':
 				return 'Đã giao hàng';
-			case 'shipping':
+			case 'Đang giao hàng':
+			case 'Shipped':
 				return 'Đang giao hàng';
-			case 'processing':
+			case 'Đang xử lý':
+			case 'Processing':
 				return 'Đang xử lý';
-			case 'cancelled':
+			case 'Đã hủy':
+			case 'Cancelled':
 				return 'Đã hủy';
+			case 'Đã xác nhận':
+			case 'Confirmed':
+				return 'Đã xác nhận';
 			default:
-				return 'Không xác định';
+				return status || 'Không xác định';
 		}
 	}
 
@@ -71,19 +117,26 @@
 			currency: 'VND'
 		}).format(price);
 	}
-
 	function formatDate(dateString: string): string {
-		return new Date(dateString).toLocaleDateString('vi-VN');
+		if (!dateString) return '';
+		// Handle both "yyyy-MM-dd HH:mm:ss" and ISO date formats
+		const date = new Date(dateString);
+		return date.toLocaleDateString('vi-VN');
 	}
 
-	let selectedOrder: any = null;
+	let selectedOrder: Order | null = null;
 
-	function viewOrderDetails(order: any) {
+	function viewOrderDetails(order: Order) {
 		selectedOrder = order;
 	}
 
 	function closeOrderDetails() {
 		selectedOrder = null;
+	}
+
+	// Helper function to check if order is delivered for "buy again" functionality
+	function isOrderDelivered(status: string): boolean {
+		return status === 'Đã giao hàng' || status === 'Delivered';
 	}
 </script>
 
@@ -98,7 +151,30 @@
 		<p class="mt-2 text-gray-600">Theo dõi trạng thái và lịch sử đơn hàng</p>
 	</div>
 
-	{#if orders.length === 0}
+	{#if loading}
+		<!-- Loading state -->
+		<div class="text-center py-12">
+			<div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+			<p class="mt-2 text-gray-600">Đang tải danh sách đơn hàng...</p>
+		</div>
+	{:else if error}
+		<!-- Error state -->
+		<div class="text-center py-12">
+			<svg class="mx-auto h-12 w-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+			</svg>
+			<h3 class="mt-2 text-sm font-medium text-gray-900">Không thể tải đơn hàng</h3>
+			<p class="mt-1 text-sm text-gray-500">{error}</p>
+			<div class="mt-6">
+				<button 
+					on:click={fetchOrders}
+					class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+				>
+					Thử lại
+				</button>
+			</div>
+		</div>
+	{:else if orders.length === 0}
 		<!-- Empty orders -->
 		<div class="text-center py-12">
 			<svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,18 +191,17 @@
 	{:else}
 		<!-- Orders list -->
 		<div class="bg-white shadow overflow-hidden sm:rounded-md">
-			<ul class="divide-y divide-gray-200">
-				{#each orders as order}
+			<ul class="divide-y divide-gray-200">				{#each orders as order}
 					<li class="px-6 py-6">
 						<div class="flex items-center justify-between">
 							<div class="flex-1">
 								<div class="flex items-center justify-between">
 									<div>
 										<h3 class="text-lg font-medium text-gray-900">
-											Đơn hàng #{order.orderNumber}
+											Đơn hàng #{order.orderId}
 										</h3>
 										<p class="text-sm text-gray-500 mt-1">
-											Đặt ngày: {formatDate(order.date)}
+											Đặt ngày: {formatDate(order.orderDate)}
 										</p>
 									</div>
 									<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium {getStatusColor(order.status)}">
@@ -136,11 +211,11 @@
 								
 								<div class="mt-3">
 									<p class="text-sm text-gray-600">
-										{order.items.length} sản phẩm • Tổng: {formatPrice(order.total)}
+										{order.orderDetails.length} sản phẩm • Tổng: {formatPrice(order.totalAmount)}
 									</p>
 									<div class="mt-2 text-sm text-gray-500">
-										{#each order.items as item, index}
-											{item.title}{index < order.items.length - 1 ? ', ' : ''}
+										{#each order.orderDetails as detail, index}
+											{detail.bookTitle}{index < order.orderDetails.length - 1 ? ', ' : ''}
 										{/each}
 									</div>
 								</div>
@@ -157,7 +232,7 @@
 									</svg>
 									Xem chi tiết
 								</button>
-								{#if order.status === 'delivered'}
+								{#if isOrderDelivered(order.status)}
 									<button class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-200">
 										<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
@@ -177,11 +252,10 @@
 <!-- Order Details Modal -->
 {#if selectedOrder}
 	<div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" on:click={closeOrderDetails}>
-		<div class="relative top-20 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white" on:click|stopPropagation>
-			<!-- Modal header -->
+		<div class="relative top-20 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white" on:click|stopPropagation>			<!-- Modal header -->
 			<div class="flex items-center justify-between pb-4 border-b">
 				<h3 class="text-lg font-medium text-gray-900">
-					Chi tiết đơn hàng #{selectedOrder.orderNumber}
+					Chi tiết đơn hàng #{selectedOrder.orderId}
 				</h3>
 				<button 
 					on:click={closeOrderDetails}
@@ -198,7 +272,7 @@
 				<div class="grid grid-cols-2 gap-4 mb-6">
 					<div>
 						<p class="text-sm font-medium text-gray-500">Ngày đặt hàng</p>
-						<p class="text-sm text-gray-900">{formatDate(selectedOrder.date)}</p>
+						<p class="text-sm text-gray-900">{formatDate(selectedOrder.orderDate)}</p>
 					</div>
 					<div>
 						<p class="text-sm font-medium text-gray-500">Trạng thái</p>
@@ -206,18 +280,27 @@
 							{getStatusText(selectedOrder.status)}
 						</span>
 					</div>
+					<div>
+						<p class="text-sm font-medium text-gray-500">Phương thức thanh toán</p>
+						<p class="text-sm text-gray-900">{selectedOrder.paymentMethod}</p>
+					</div>
+					<div>
+						<p class="text-sm font-medium text-gray-500">Địa chỉ giao hàng</p>
+						<p class="text-sm text-gray-900">{selectedOrder.shippingAddress}</p>
+					</div>
 				</div>
 
 				<div class="mb-6">
 					<h4 class="text-sm font-medium text-gray-900 mb-3">Sản phẩm đã đặt</h4>
 					<div class="border rounded-lg divide-y">
-						{#each selectedOrder.items as item}
+						{#each selectedOrder.orderDetails as detail}
 							<div class="p-4 flex justify-between items-center">
 								<div>
-									<p class="text-sm font-medium text-gray-900">{item.title}</p>
-									<p class="text-sm text-gray-500">Số lượng: {item.quantity}</p>
+									<p class="text-sm font-medium text-gray-900">{detail.bookTitle}</p>
+									<p class="text-sm text-gray-500">Tác giả: {detail.bookAuthor || 'Không rõ'}</p>
+									<p class="text-sm text-gray-500">Số lượng: {detail.quantity} x {formatPrice(detail.priceAtOrder)}</p>
 								</div>
-								<p class="text-sm font-medium text-gray-900">{formatPrice(item.price * item.quantity)}</p>
+								<p class="text-sm font-medium text-gray-900">{formatPrice(detail.subtotal)}</p>
 							</div>
 						{/each}
 					</div>
@@ -226,7 +309,7 @@
 				<div class="border-t pt-4">
 					<div class="flex justify-between text-base font-medium text-gray-900">
 						<span>Tổng cộng</span>
-						<span>{formatPrice(selectedOrder.total)}</span>
+						<span>{formatPrice(selectedOrder.totalAmount)}</span>
 					</div>
 				</div>
 			</div>
