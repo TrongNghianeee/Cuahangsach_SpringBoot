@@ -113,4 +113,8 @@ public class UserService {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Người dùng không tồn tại"));
     }
+
+    public Long getTotalUserCount() {
+        return userRepository.count();
+    }
 }

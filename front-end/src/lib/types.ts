@@ -23,6 +23,12 @@ export interface UserFormData {
 	status: 'Active' | 'Lock';
 }
 
+export interface OverviewStats {
+	totalUsers: number;
+	totalProducts: number;
+	totalOrders: number;
+}
+
 export interface Product {
 	bookId: number;
 	title: string;

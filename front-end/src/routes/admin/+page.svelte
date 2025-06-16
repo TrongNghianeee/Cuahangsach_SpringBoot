@@ -1,42 +1,71 @@
 <!-- front-end/src/routes/admin/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { fetchDashboardOverview } from '$lib/dashboard';
+	import type { OverviewStats } from '$lib/types';
 
-	// Sample data for dashboard
-	let stats = {
+	// Dashboard stats
+	let stats: OverviewStats = {
 		totalUsers: 0,
 		totalProducts: 0,
-		totalOrders: 0,
-		revenue: 0
+		totalOrders: 0
 	};
 
+	let loading = true;
+	let error: string | null = null;
+
 	onMount(async () => {
-		// TODO: Fetch real data from API
-		// For now, using mock data
-		stats = {
-			totalUsers: 150,
-			totalProducts: 240,
-			totalOrders: 89,
-			revenue: 25000000
-		};
+		try {
+			loading = true;
+			stats = await fetchDashboardOverview();
+		} catch (err) {
+			console.error('Failed to fetch dashboard data:', err);
+			error = 'Không thể tải dữ liệu dashboard. Đang hiển thị dữ liệu mẫu.';
+			// Fallback to mock data
+			stats = {
+				totalUsers: 150,
+				totalProducts: 240,
+				totalOrders: 89
+			};
+		} finally {
+			loading = false;
+		}
 	});
 
-	function formatCurrency(amount: number): string {
-		return new Intl.NumberFormat('vi-VN', {
-			style: 'currency',
-			currency: 'VND'
-		}).format(amount);
+	function formatNumber(num: number): string {
+		return new Intl.NumberFormat('vi-VN').format(num);
 	}
 </script>
 
-<div class="p-6">
-	<div class="mb-8">
+<div class="p-6">	<div class="mb-8">
 		<h1 class="text-3xl font-bold text-gray-900">Tổng quan hệ thống</h1>
 		<p class="text-gray-600 mt-2">Xem tổng quan về hoạt động của cửa hàng sách</p>
+		
+		{#if error}
+			<div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mt-4">
+				<p><strong>Cảnh báo:</strong> {error}</p>
+			</div>
+		{/if}
 	</div>
 
-	<!-- Stats Grid -->
-	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+	<!-- Loading State -->
+	{#if loading}
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+			{#each Array(3) as _}
+				<div class="bg-white rounded-lg shadow p-6 animate-pulse">
+					<div class="flex items-center">
+						<div class="p-3 rounded-full bg-gray-200 w-12 h-12"></div>
+						<div class="ml-4 flex-1">
+							<div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+							<div class="h-6 bg-gray-200 rounded w-1/2"></div>
+						</div>
+					</div>
+				</div>
+			{/each}
+		</div>
+	{:else}
+		<!-- Stats Grid -->
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
 		<!-- Total Users -->
 		<div class="bg-white rounded-lg shadow p-6">
 			<div class="flex items-center">
@@ -44,10 +73,9 @@
 					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
 					</svg>
-				</div>
-				<div class="ml-4">
+				</div>				<div class="ml-4">
 					<p class="text-sm font-medium text-gray-600">Tổng người dùng</p>
-					<p class="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
+					<p class="text-2xl font-bold text-gray-900">{formatNumber(stats.totalUsers)}</p>
 				</div>
 			</div>
 		</div>
@@ -62,7 +90,7 @@
 				</div>
 				<div class="ml-4">
 					<p class="text-sm font-medium text-gray-600">Tổng sản phẩm</p>
-					<p class="text-2xl font-bold text-gray-900">{stats.totalProducts}</p>
+					<p class="text-2xl font-bold text-gray-900">{formatNumber(stats.totalProducts)}</p>
 				</div>
 			</div>
 		</div>
@@ -77,26 +105,12 @@
 				</div>
 				<div class="ml-4">
 					<p class="text-sm font-medium text-gray-600">Tổng đơn hàng</p>
-					<p class="text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
-				</div>
-			</div>
-		</div>
-
-		<!-- Revenue -->
-		<div class="bg-white rounded-lg shadow p-6">
-			<div class="flex items-center">
-				<div class="p-3 rounded-full bg-purple-100 text-purple-600">
-					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-					</svg>
-				</div>
-				<div class="ml-4">
-					<p class="text-sm font-medium text-gray-600">Doanh thu</p>
-					<p class="text-2xl font-bold text-gray-900">{formatCurrency(stats.revenue)}</p>
+					<p class="text-2xl font-bold text-gray-900">{formatNumber(stats.totalOrders)}</p>
 				</div>
 			</div>
 		</div>
 	</div>
+	{/if}
 
 	<!-- Quick Actions -->
 	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">

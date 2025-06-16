@@ -76,4 +76,8 @@ public class OrderService {
         // TODO: Implement order deletion logic
         throw new UnsupportedOperationException("Order deletion not implemented yet");
     }
+
+    public Long getTotalOrderCount() {
+        return orderRepository.count();
+    }
 }
