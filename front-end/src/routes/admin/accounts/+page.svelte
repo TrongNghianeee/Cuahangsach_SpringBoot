@@ -3,14 +3,19 @@
 	import { writable } from 'svelte/store';
 	import { authenticatedFetch } from '$lib/auth';
 	import type { User, UserFormData, ApiResponse } from '$lib/types';
-
 	// Stores
 	const users = writable<User[]>([]);
+	const filteredUsers = writable<User[]>([]);
 	const loading = writable<boolean>(false);
 	const message = writable<string>('');
 	const error = writable<string>('');
 	const showModal = writable<boolean>(false);
 	const editMode = writable<boolean>(false);
+
+	// Filter states
+	let searchTerm = '';
+	let filterRole = '';
+	let filterStatus = '';
 
 	// Form data
 	let formData: UserFormData = {
@@ -31,10 +36,10 @@
 	async function fetchUsers(): Promise<void> {
 		loading.set(true);
 		try {
-			const response = await authenticatedFetch(API_BASE);
-			const result: ApiResponse<User[]> = await response.json();
+			const response = await authenticatedFetch(API_BASE);			const result: ApiResponse<User[]> = await response.json();
 			if (result.success && result.data) {
 				users.set(result.data);
+				applyFilters(); // Apply filters after fetching data
 			} else {
 				error.set(result.message);
 			}
@@ -44,6 +49,46 @@
 			loading.set(false);
 		}
 	}
+	// Filter function
+	function applyFilters(): void {
+		if (!$users || $users.length === 0) {
+			filteredUsers.set([]);
+			return;
+		}
+
+		let filtered = $users;
+
+		// Search by name or email
+		if (searchTerm.trim()) {
+			const search = searchTerm.toLowerCase().trim();
+			filtered = filtered.filter(user => 
+				user.username.toLowerCase().includes(search) ||
+				user.email.toLowerCase().includes(search) ||
+				(user.fullName && user.fullName.toLowerCase().includes(search))
+			);
+		}
+
+		// Filter by role
+		if (filterRole) {
+			filtered = filtered.filter(user => user.role === filterRole);
+		}
+
+		// Filter by status
+		if (filterStatus) {
+			filtered = filtered.filter(user => user.status === filterStatus);
+		}
+
+		filteredUsers.set(filtered);
+	}
+
+	// Clear all filters
+	function clearFilters(): void {
+		searchTerm = '';
+		filterRole = '';
+		filterStatus = '';
+		applyFilters();
+	}
+
 	async function submitForm(): Promise<void> {
 		if (!validateForm()) return;
 
@@ -165,7 +210,6 @@
 		resetForm();
 		error.set('');
 	}
-
 	// Clear messages after 3 seconds
 	$: if ($message) {
 		setTimeout(() => message.set(''), 3000);
@@ -174,8 +218,14 @@
 		setTimeout(() => error.set(''), 5000);
 	}
 
+	// Auto-apply filters when search term or filter criteria change
+	$: if (searchTerm !== undefined || filterRole !== undefined || filterStatus !== undefined) {
+		applyFilters();
+	}
 	onMount(() => {
 		fetchUsers();
+		// Initialize filtered users
+		filteredUsers.set([]);
 	});
 </script>
 
@@ -208,8 +258,87 @@
 	{#if $error}
 		<div class="mb-4 rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700">
 			{$error}
+		</div>	{/if}
+
+	<!-- Search and Filter Section -->
+	<div class="mb-6 rounded-lg bg-white p-4 shadow-md">
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+			<!-- Search Input -->
+			<div class="md:col-span-2">
+				<label for="search" class="mb-1 block text-sm font-medium text-gray-700">
+					Tìm kiếm theo tên, email
+				</label>
+				<div class="relative">
+					<input
+						id="search"
+						type="text"
+						bind:value={searchTerm}
+						placeholder="Nhập tên người dùng, email hoặc họ tên..."
+						class="w-full rounded-md border border-gray-300 pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+					/>
+					<div class="absolute inset-y-0 left-0 flex items-center pl-3">
+						<svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+						</svg>
+					</div>
+				</div>
+			</div>
+
+			<!-- Role Filter -->
+			<div>
+				<label for="roleFilter" class="mb-1 block text-sm font-medium text-gray-700">
+					Lọc theo vai trò
+				</label>
+				<select
+					id="roleFilter"
+					bind:value={filterRole}
+					class="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+				>
+					<option value="">Tất cả vai trò</option>
+					<option value="KH">Khách hàng</option>
+					<option value="Nvien">Nhân viên</option>
+					<option value="Qly">Quản lý</option>
+				</select>
+			</div>
+
+			<!-- Status Filter -->
+			<div>
+				<label for="statusFilter" class="mb-1 block text-sm font-medium text-gray-700">
+					Lọc theo trạng thái
+				</label>
+				<select
+					id="statusFilter"
+					bind:value={filterStatus}
+					class="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+				>
+					<option value="">Tất cả trạng thái</option>
+					<option value="Active">Hoạt động</option>
+					<option value="Lock">Bị khóa</option>
+				</select>
+			</div>
 		</div>
-	{/if}
+
+		<!-- Filter Actions -->
+		<div class="mt-4 flex items-center justify-between">
+			<div class="flex items-center gap-4">
+				<span class="text-sm text-gray-600">
+					Hiển thị <span class="font-medium">{$filteredUsers.length}</span> / <span class="font-medium">{$users.length}</span> người dùng
+				</span>
+			</div>
+			
+			{#if searchTerm || filterRole || filterStatus}
+				<button
+					on:click={clearFilters}
+					class="flex items-center gap-2 rounded-md border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50"
+				>
+					<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+					</svg>
+					Xóa bộ lọc
+				</button>
+			{/if}
+		</div>
+	</div>
 
 	<!-- Loading indicator -->
 	{#if $loading}
@@ -254,9 +383,8 @@
 						Thao tác
 					</th>
 				</tr>
-			</thead>
-			<tbody class="divide-y divide-gray-200 bg-white">
-				{#each $users as user}
+			</thead>			<tbody class="divide-y divide-gray-200 bg-white">
+				{#each $filteredUsers as user}
 					<tr>
 						<td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
 							{user.username}
@@ -349,9 +477,16 @@
 				{/each}
 			</tbody>
 		</table>
-
-		{#if $users.length === 0 && !$loading}
-			<div class="py-8 text-center text-gray-500">Không có người dùng nào</div>
+		{#if $filteredUsers.length === 0 && !$loading}
+			<div class="py-8 text-center text-gray-500">
+				{#if $users.length === 0}
+					Không có người dùng nào
+				{:else if searchTerm || filterRole || filterStatus}
+					Không tìm thấy người dùng nào phù hợp với bộ lọc
+				{:else}
+					Không có dữ liệu
+				{/if}
+			</div>
 		{/if}
 	</div>
 </div>

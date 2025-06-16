@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { writable, derived } from 'svelte/store';
 	import type { Product, Category, ApiResponse } from '$lib/types';
+	import { getPrimaryImageUrl } from '$lib/imageUtils';
 
 	// Stores để quản lý state
 	const books = writable<Product[]>([]);
@@ -20,7 +21,6 @@
 	// API URLs
 	const API_BASE = 'http://localhost:8080/api/user';
 	const AUTH_API = 'http://localhost:8080/api/auth';
-
 	// Fetch books from API
 	async function fetchBooks(): Promise<void> {
 		loading.set(true);
@@ -30,6 +30,11 @@
 
 			if (result.success && result.data) {
 				books.set(result.data);
+				// Debug: Log the first book's images to see the structure
+				if (result.data.length > 0 && result.data[0].images) {
+					console.log('First book images:', result.data[0].images);
+					console.log('Generated image URL:', getPrimaryImageUrl(result.data[0].images));
+				}
 				error.set('');
 			} else {
 				error.set(result.message || 'Lỗi khi lấy danh sách sách');
@@ -120,19 +125,12 @@
 			});
 		}
 	}
-
 	// Format price to Vietnamese currency
 	function formatPrice(price: number): string {
 		return new Intl.NumberFormat('vi-VN', {
 			style: 'currency',
 			currency: 'VND'
 		}).format(price);
-	}
-	// Get primary image URL or return null for default
-	function getPrimaryImageUrl(images?: any[]): string | null {
-		if (!images || images.length === 0) return null;
-		const primaryImage = images.find((img) => img.isPrimary);
-		return primaryImage ? primaryImage.imageUrl : images[0].imageUrl;
 	}
 
 	// Filtered and sorted books using derived store
@@ -265,12 +263,12 @@
 								placeholder="Tìm kiếm theo tên sách hoặc tác giả..."
 								class="block w-full rounded-xl border border-gray-300 bg-white/80 backdrop-blur-sm py-3 pl-10 pr-4 text-sm shadow-sm transition-all duration-300 placeholder:text-gray-400 hover:border-gray-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:shadow-md"
 							/>
-							{#if $searchTerm}
-								<button
+							{#if $searchTerm}								<button
 									type="button"
 									on:click={() => searchTerm.set('')}
 									class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors"
 									title="Xóa tìm kiếm"
+									aria-label="Xóa tìm kiếm"
 								>
 									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -415,28 +413,64 @@
 					{#each $filteredBooks as book}
 						<div
 							class="overflow-hidden rounded-lg bg-white shadow-md transition-shadow duration-200 hover:shadow-lg"
-						>
-							<div class="flex h-48 items-center justify-center bg-gray-200">
-								{#if getPrimaryImageUrl(book.images)}
+						>							<div class="book-image-container flex h-48 items-center justify-center">
+								{#if book.images && book.images.length > 0}
 									<img
 										src={getPrimaryImageUrl(book.images)}
 										alt={book.title}
-										class="h-full w-full object-cover"
-									/>
+										class="book-image max-h-full max-w-full object-contain"
+										on:load={() => {
+											console.log('Image loaded successfully for:', book.title);
+										}}
+										on:error={(e) => {
+										console.warn('Failed to load image for book:', book.title);
+										console.warn('Image URL was:', getPrimaryImageUrl(book.images ?? []));
+										const img = e.currentTarget as HTMLImageElement;
+										const placeholder = img.nextElementSibling as HTMLElement;
+										img.style.display = 'none';
+										if (placeholder) {
+											placeholder.style.display = 'flex';
+										}
+									}}
+									/>									<!-- Fallback placeholder (hidden by default) -->
+									<div class="hidden h-full w-full items-center justify-center rounded bg-gray-100">
+										<div class="text-center">
+											<svg
+												class="mx-auto h-16 w-16 text-gray-400 mb-2"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+												/>
+											</svg>
+											<p class="text-xs text-gray-500">Không có ảnh</p>
+										</div>
+									</div>
 								{:else}
-									<svg
-										class="h-16 w-16 text-gray-400"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-										/>
-									</svg>
+									<!-- No images available -->
+									<div class="h-full w-full flex items-center justify-center rounded bg-gray-100">
+										<div class="text-center">
+											<svg
+												class="mx-auto h-16 w-16 text-gray-400 mb-2"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+												/>
+											</svg>
+											<p class="text-xs text-gray-500">Không có ảnh</p>
+										</div>
+									</div>
 								{/if}
 							</div>
 							<div class="p-4">
@@ -521,5 +555,38 @@
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 		text-overflow: ellipsis;
+	}
+
+	/* Improve image display */
+	.book-image-container {
+		background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+		border-radius: 0.5rem;
+		padding: 0.5rem;
+	}
+
+	.book-image {
+		transition: transform 0.2s ease-in-out;
+		border-radius: 0.25rem;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	}
+
+	.book-image:hover {
+		transform: scale(1.02);
+	}
+
+	/* Loading shimmer effect */
+	.image-loading {
+		background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite;
+	}
+
+	@keyframes shimmer {
+		0% {
+			background-position: -200% 0;
+		}
+		100% {
+			background-position: 200% 0;
+		}
 	}
 </style>

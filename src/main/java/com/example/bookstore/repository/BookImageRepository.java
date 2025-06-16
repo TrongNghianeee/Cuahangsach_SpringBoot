@@ -12,6 +12,8 @@ public interface BookImageRepository extends JpaRepository<BookImage, Integer> {
     
     List<BookImage> findByBookBookId(Integer bookId);
     
+    List<BookImage> findByBookBookIdOrderByIsPrimaryDescUploadedAtAsc(Integer bookId);
+    
     BookImage findByBookBookIdAndIsPrimaryTrue(Integer bookId);
     
     void deleteByBookBookId(Integer bookId);

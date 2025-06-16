@@ -55,8 +55,12 @@ export interface ProductFormData {
 
 export interface BookImage {
 	imageId: number;
+	bookId?: number;
+	bookTitle?: string;
 	imageUrl: string;
+	description?: string;
 	isPrimary: boolean;
+	uploadedAt?: string;
 }
 
 export interface Category {
