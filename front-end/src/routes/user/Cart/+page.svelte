@@ -2,13 +2,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { writable } from 'svelte/store';
-	import type { ShoppingCartItem, ApiResponse } from '$lib/types';
+	import type { ShoppingCartItem, ApiResponse, BookImage } from '$lib/types';
+	import { getUserPrimaryImage } from '$lib/userImageService';
+	import { getImageUrl } from '$lib/imageUtils';
 	// Stores
 	const cartItems = writable<ShoppingCartItem[]>([]);
 	const loading = writable<boolean>(false);
-	const error = writable<string>('');	const currentUser = writable<any>(null);
-	const removingItems = writable<Set<number>>(new Set());
+	const error = writable<string>('');	const currentUser = writable<any>(null);	const removingItems = writable<Set<number>>(new Set());
 	const itemQuantities = writable<Map<number, number>>(new Map());
+	const bookImages = writable<Map<number, BookImage | null>>(new Map());
 	
 	// Checkout form data
 	const shippingAddress = writable<string>('');
@@ -63,8 +65,7 @@
 					'Authorization': `Bearer ${token}`,
 					'Content-Type': 'application/json'
 				}
-			});
-		const result: ApiResponse<ShoppingCartItem[]> = await response.json();
+			});		const result: ApiResponse<ShoppingCartItem[]> = await response.json();
 		if (result.success && result.data) {
 			cartItems.set(result.data);
 			// Initialize quantities for each item (default to 1)
@@ -75,6 +76,10 @@
 				});
 				return newQuantities;
 			});
+			
+			// Load images for each cart item
+			await loadCartItemImages(result.data);
+			
 			error.set('');
 		} else {
 				error.set(result.message || 'Lỗi khi lấy danh sách giỏ hàng');
@@ -84,7 +89,30 @@
 			console.error('Error fetching cart items:', err);
 		} finally {
 			loading.set(false);
-		}
+		}	}
+
+	// Load images for cart items
+	async function loadCartItemImages(items: ShoppingCartItem[]): Promise<void> {
+		const imagePromises = items.map(async (item) => {
+			try {
+				const primaryImage = await getUserPrimaryImage(item.bookId);
+				bookImages.update(images => {
+					const newImages = new Map(images);
+					newImages.set(item.bookId, primaryImage);
+					return newImages;
+				});
+			} catch (error) {
+				console.warn(`Failed to load image for book ${item.bookId}:`, error);
+				bookImages.update(images => {
+					const newImages = new Map(images);
+					newImages.set(item.bookId, null);
+					return newImages;
+				});
+			}
+		});
+
+		// Wait for all image loads to complete (or fail)
+		await Promise.allSettled(imagePromises);
 	}
 
 	// Remove item from cart
@@ -287,14 +315,53 @@
 				<div class="bg-white shadow overflow-hidden sm:rounded-md">
 					<ul class="divide-y divide-gray-200">
 						{#each $cartItems as item (item.bookId)}
-							<li class="px-6 py-6">
-								<div class="flex items-start space-x-4">
-									<!-- Book image placeholder -->
-									<div class="flex-shrink-0 w-20 h-28 bg-gray-200 rounded-md flex items-center justify-center">
-										<svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-										</svg>
-									</div>									<!-- Book info -->
+							<li class="px-6 py-6">								<div class="flex items-start space-x-4">									<!-- Book image -->
+									<div class="book-image-container flex-shrink-0 w-20 h-28 rounded-md overflow-hidden flex items-center justify-center relative">
+										{#if $bookImages.has(item.bookId)}
+											{#if $bookImages.get(item.bookId)}
+												<img 
+													src={getImageUrl($bookImages.get(item.bookId)?.imageUrl || '')}
+													alt={item.bookTitle}
+													class="book-image w-full h-full object-contain"
+													loading="lazy"
+													on:error={(e) => {
+														const target = e.target as HTMLImageElement;
+														target.style.display = 'none';
+														const placeholder = target.nextElementSibling as HTMLElement;
+														if (placeholder) {
+															placeholder.style.display = 'flex';
+														}
+													}}
+												/>
+												<!-- Fallback placeholder for failed image loads (hidden by default) -->
+												<div class="hidden w-full h-full items-center justify-center bg-gray-200 absolute inset-0">
+													<svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+													</svg>
+												</div>
+											{:else}
+												<!-- No image available -->
+												<div class="w-full h-full flex items-center justify-center bg-gray-200">
+													<div class="text-center">
+														<svg class="w-6 h-6 text-gray-400 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+														</svg>
+														<p class="text-xs text-gray-400">Không có ảnh</p>
+													</div>
+												</div>
+											{/if}
+										{:else}
+											<!-- Loading state -->
+											<div class="w-full h-full flex items-center justify-center bg-gray-100">
+												<div class="text-center">
+													<svg class="w-5 h-5 text-gray-400 mx-auto mb-1 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+													</svg>
+													<p class="text-xs text-gray-400">Đang tải...</p>
+												</div>
+											</div>
+										{/if}
+									</div><!-- Book info -->
 									<div class="flex-1 min-w-0">
 										<h3 class="text-lg font-medium text-gray-900">{item.bookTitle}</h3>
 										<p class="text-sm text-gray-500 mt-1">Tác giả: {item.bookAuthor || 'Không xác định'}</p>
@@ -497,5 +564,41 @@
 	.form-radio:focus {
 		outline: none;
 		box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+	}
+
+	/* Book image styling */
+	.book-image-container {
+		position: relative;
+		background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+		border: 1px solid #e2e8f0;
+		transition: all 0.2s ease-in-out;
+	}
+
+	.book-image-container:hover {
+		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+	}
+
+	.book-image {
+		transition: transform 0.2s ease-in-out;
+	}
+
+	.book-image:hover {
+		transform: scale(1.02);
+	}
+
+	/* Loading animation */
+	@keyframes shimmer {
+		0% {
+			background-position: -200% 0;
+		}
+		100% {
+			background-position: 200% 0;
+		}
+	}
+
+	.image-loading {
+		background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite;
 	}
 </style>

@@ -17,10 +17,16 @@
 	const selectedProducts = writable<Set<number>>(new Set());
 	const showInventoryModal = writable<boolean>(false);
 	const showImageManager = writable<boolean>(false);
-
 	// Image management state
 	let currentBookId: number | null = null;
 	let currentBookImages: BookImage[] = [];
+
+	// Filter states
+	const searchTerm = writable<string>('');
+	const selectedCategory = writable<string>('');
+	const priceSort = writable<string>(''); // 'asc', 'desc', ''
+	const stockFilter = writable<string>(''); // 'in-stock', 'out-of-stock', ''
+	const showFilters = writable<boolean>(false);
 
 	// Form data
 	let formData: ProductFormData = {
@@ -51,9 +57,53 @@
 
 	// API Base URLs	// API Base URLs
 	const API_BASE = 'http://localhost:8080/api/admin/products';
-	const CATEGORIES_API = 'http://localhost:8080/api/admin/categories';
-	const INVENTORY_API = 'http://localhost:8080/api/admin/inventory';
+	const CATEGORIES_API = 'http://localhost:8080/api/admin/categories';	const INVENTORY_API = 'http://localhost:8080/api/admin/inventory';
 	const AUTH_API = 'http://localhost:8080/api/auth';
+
+	// Derived store for filtered products
+	import { derived } from 'svelte/store';
+	
+	const filteredProducts = derived(
+		[products, searchTerm, selectedCategory, priceSort, stockFilter],
+		([$products, $searchTerm, $selectedCategory, $priceSort, $stockFilter]) => {
+			let filtered = [...$products];
+
+			// Filter by search term (title or author)
+			if ($searchTerm.trim()) {
+				const term = $searchTerm.toLowerCase().trim();
+				filtered = filtered.filter(product => 
+					product.title.toLowerCase().includes(term) ||
+					(product.author && product.author.toLowerCase().includes(term))
+				);
+			}
+
+			// Filter by category
+			if ($selectedCategory) {
+				filtered = filtered.filter(product => 
+					product.categories && product.categories.some(cat => 
+						cat.categoryId.toString() === $selectedCategory
+					)
+				);
+			}
+
+			// Filter by stock status
+			if ($stockFilter === 'in-stock') {
+				filtered = filtered.filter(product => (product.stockQuantity || 0) > 0);
+			} else if ($stockFilter === 'out-of-stock') {
+				filtered = filtered.filter(product => (product.stockQuantity || 0) === 0);
+			}
+
+			// Sort by price
+			if ($priceSort === 'asc') {
+				filtered.sort((a, b) => (a.price || 0) - (b.price || 0));
+			} else if ($priceSort === 'desc') {
+				filtered.sort((a, b) => (b.price || 0) - (a.price || 0));
+			}
+
+			return filtered;
+		}
+	);
+
 	// Functions
 	async function fetchProducts(): Promise<void> {
 		loading.set(true);
@@ -315,13 +365,39 @@
 		editProductId = null;
 		editMode.set(false);
 	}
-
 	function resetCategoryForm(): void {
 		categoryFormData = {
 			categoryName: ''
 		};
 		editCategoryId = null;
 		editCategoryMode.set(false);
+	}
+
+	// Filter functions
+	function clearAllFilters(): void {
+		searchTerm.set('');
+		selectedCategory.set('');
+		priceSort.set('');
+		stockFilter.set('');
+	}
+
+	function toggleFilters(): void {
+		showFilters.update(show => !show);
+	}
+
+	function getFilterSummary(): string {
+		let summary = [];
+		if ($searchTerm) summary.push(`Tìm kiếm: "${$searchTerm}"`);
+		if ($selectedCategory) {
+			const cat = $categories.find(c => c.categoryId.toString() === $selectedCategory);
+			summary.push(`Danh mục: ${cat?.categoryName || 'N/A'}`);
+		}
+		if ($priceSort === 'asc') summary.push('Giá: Thấp → Cao');
+		if ($priceSort === 'desc') summary.push('Giá: Cao → Thấp');
+		if ($stockFilter === 'in-stock') summary.push('Còn hàng');
+		if ($stockFilter === 'out-of-stock') summary.push('Hết hàng');
+		
+		return summary.length > 0 ? summary.join(' • ') : 'Không có bộ lọc';
 	}
 
 	function openAddProductModal(): void {
@@ -626,12 +702,105 @@
 			{/each}
 		</div>
 	</div>
-
 	<!-- Products Table -->
 	<div class="bg-white rounded-lg shadow overflow-hidden">
 		<div class="px-6 py-4 border-b border-gray-200">
-			<h2 class="text-xl font-semibold">Danh sách Sản phẩm</h2>
+			<div class="flex items-center justify-between">
+				<h2 class="text-xl font-semibold">Danh sách Sản phẩm</h2>
+				<div class="flex items-center space-x-4">
+					<span class="text-sm text-gray-500">
+						{$filteredProducts.length} / {$products.length} sản phẩm
+					</span>
+					<button
+						on:click={toggleFilters}
+						class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+					>
+						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+						</svg>
+						{$showFilters ? 'Ẩn bộ lọc' : 'Hiện bộ lọc'}
+					</button>
+				</div>
+			</div>
 		</div>
+
+		<!-- Filters Panel -->
+		{#if $showFilters}
+			<div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+					<!-- Search -->
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-1">Tìm kiếm</label>
+						<input
+							bind:value={$searchTerm}
+							type="text"
+							placeholder="Tên sách, tác giả..."
+							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+						/>
+					</div>
+
+					<!-- Category Filter -->
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-1">Danh mục</label>
+						<select
+							bind:value={$selectedCategory}
+							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+						>
+							<option value="">Tất cả danh mục</option>
+							{#each $categories as category}
+								<option value={category.categoryId.toString()}>
+									{category.categoryName}
+								</option>
+							{/each}
+						</select>
+					</div>
+
+					<!-- Price Sort -->
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-1">Sắp xếp giá</label>
+						<select
+							bind:value={$priceSort}
+							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+						>
+							<option value="">Mặc định</option>
+							<option value="asc">Giá thấp → cao</option>
+							<option value="desc">Giá cao → thấp</option>
+						</select>
+					</div>
+
+					<!-- Stock Filter -->
+					<div>
+						<label class="block text-sm font-medium text-gray-700 mb-1">Tình trạng</label>
+						<select
+							bind:value={$stockFilter}
+							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+						>
+							<option value="">Tất cả</option>
+							<option value="in-stock">Còn hàng</option>
+							<option value="out-of-stock">Hết hàng</option>
+						</select>
+					</div>
+				</div>
+
+				<!-- Filter Summary and Clear -->
+				<div class="flex items-center justify-between">
+					<div class="text-sm text-gray-600">
+						<span class="font-medium">Bộ lọc hiện tại:</span>
+						<span>{getFilterSummary()}</span>
+					</div>
+					<button
+						on:click={clearAllFilters}
+						class="inline-flex items-center px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-100"
+						disabled={!$searchTerm && !$selectedCategory && !$priceSort && !$stockFilter}
+					>
+						<svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+						</svg>
+						Xóa bộ lọc
+					</button>
+				</div>
+			</div>
+		{/if}
 
 		{#if $loading}
 			<div class="flex justify-center items-center py-8">
@@ -640,17 +809,22 @@
 			<div class="overflow-x-auto">
 				<table class="min-w-full divide-y divide-gray-200">
 					<thead class="bg-gray-50">
-						<tr>
-							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">								<input
+						<tr>							<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">								<input
 									type="checkbox"
 									class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-									checked={$selectedProducts.size === $products.length && $products.length > 0}
+									checked={$filteredProducts.length > 0 && $filteredProducts.every(p => $selectedProducts.has(p.bookId))}
 									on:change={(e) => {
 										const target = e.target as HTMLInputElement;
 										if (target.checked) {
-											selectedProducts.set(new Set($products.map(p => p.bookId)));
+											// Select all filtered products
+											const newSelection = new Set($selectedProducts);
+											$filteredProducts.forEach(p => newSelection.add(p.bookId));
+											selectedProducts.set(newSelection);
 										} else {
-											selectedProducts.set(new Set());
+											// Deselect all filtered products
+											const newSelection = new Set($selectedProducts);
+											$filteredProducts.forEach(p => newSelection.delete(p.bookId));
+											selectedProducts.set(newSelection);
 										}
 									}}
 								/>
@@ -677,9 +851,8 @@
 								Thao tác
 							</th>
 						</tr>
-					</thead>
-					<tbody class="bg-white divide-y divide-gray-200">
-						{#each $products as product}
+					</thead>					<tbody class="bg-white divide-y divide-gray-200">
+						{#each $filteredProducts as product}
 							<tr class="hover:bg-gray-50">
 								<td class="px-6 py-4 whitespace-nowrap">
 									<input
@@ -745,6 +918,41 @@
 							</tr>						{/each}
 					</tbody>
 				</table>
+			</div>
+		{/if}
+
+		<!-- Empty State -->
+		{#if !$loading && $filteredProducts.length === 0}
+			<div class="text-center py-12">
+				<svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414a1 1 0 00-.707-.293H6"/>
+				</svg>
+				<h3 class="mt-2 text-sm font-medium text-gray-900">
+					{$products.length === 0 ? 'Chưa có sản phẩm' : 'Không tìm thấy sản phẩm'}
+				</h3>
+				<p class="mt-1 text-sm text-gray-500">
+					{$products.length === 0 
+						? 'Bắt đầu bằng cách thêm sản phẩm đầu tiên của bạn.' 
+						: 'Thử điều chỉnh bộ lọc hoặc xóa bộ lọc để xem tất cả sản phẩm.'
+					}
+				</p>
+				<div class="mt-6 flex justify-center space-x-3">
+					{#if $products.length === 0}
+						<button
+							on:click={openAddProductModal}
+							class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+						>
+							Thêm sản phẩm đầu tiên
+						</button>
+					{:else}
+						<button
+							on:click={clearAllFilters}
+							class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+						>
+							Xóa bộ lọc
+						</button>
+					{/if}
+				</div>
 			</div>
 		{/if}
 	</div>
