@@ -8,13 +8,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-
 // @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 // @TestPropertySource(properties = { "server.port=8080" })
 public class LoginSeleniumTestNew {
@@ -462,4 +462,105 @@ public class LoginSeleniumTestNew {
         Assertions.assertTrue(adminRedirected, "Admin should be redirected after login");
         Assertions.assertTrue(customerRedirected, "Customer should be redirected after login");
     }
+
+    @Test
+    @DisplayName("Test login failure with locked account - should stay on login page with error")
+    void testLockedAccountLoginFailure() {
+        // Điều hướng đến trang đăng nhập
+        driver.get(BASE_URL + "/auth/login");
+
+        // Delay để trang web load hoàn toàn
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Đợi các phần tử của form login hiển thị
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("username")));
+
+        // Tìm các phần tử trên form
+        WebElement usernameField = driver.findElement(By.id("username"));
+        WebElement passwordField = driver.findElement(By.id("password"));
+        WebElement loginButton = driver.findElement(By.xpath("//button[@type='submit']"));
+
+        // Nhập tài khoản bị khóa
+        usernameField.clear();
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        usernameField.sendKeys("admin1");
+
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        passwordField.clear();
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        passwordField.sendKeys("abc@123");
+
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Click login
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        loginButton.click();
+
+        // Đợi thời gian đủ để xử lý login, nhưng KHÔNG được redirect
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Lấy URL hiện tại
+        String currentUrl = driver.getCurrentUrl();
+        System.out.println("Current URL after locked login attempt: " + currentUrl);
+
+        // Kiểm tra: không bị redirect (vẫn ở trang login)
+        boolean stayedOnLoginPage = currentUrl.contains("/login") || currentUrl.contains("/auth/login");
+        Assertions.assertTrue(stayedOnLoginPage, 
+            " \nThất bại: Người dùng đã bị redirect khỏi trang login. URL hiện tại: " + currentUrl);
+
+        // Kiểm tra: có hiển thị thông báo lỗi
+        try {
+            WebElement errorMessage = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector(".error, .alert-danger, .text-red-600, [role='alert']")));
+
+            String errorText = errorMessage.getText().toLowerCase();
+            System.out.println("❗ Error message shown: " + errorText);
+
+            boolean hasLockedText = errorText.contains("lock") || 
+                                    errorText.contains("disabled") || 
+                                    errorText.contains("inactive") || 
+                                    errorText.contains("blocked") || 
+                                    errorText.contains("suspended") || 
+                                    errorText.contains("deactivated");
+
+            Assertions.assertTrue(hasLockedText, 
+                " \nThất bại: Thông báo lỗi không đúng nội dung khóa tài khoản. Message: " + errorText);
+
+        } catch (TimeoutException e) {
+            Assertions.fail(" \nThất bại: Không hiển thị thông báo lỗi sau khi login với tài khoản bị khóa.");
+        }
+
+        System.out.println("\nLogin với tài khoản bị khóa được xử lý đúng: không bị redirect và có thông báo lỗi phù hợp.");
+    }
+
+
 }

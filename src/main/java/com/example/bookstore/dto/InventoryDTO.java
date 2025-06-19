@@ -1,6 +1,7 @@
 package com.example.bookstore.dto;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import com.example.bookstore.model.InventoryTransaction;
 
@@ -19,6 +20,9 @@ public class InventoryDTO {
 
     @NotNull(message = "Vui lòng chọn sách")
     private Integer bookId;
+    
+    // Thêm tên sách để hiển thị
+    private String bookTitle;
 
     @NotBlank(message = "Vui lòng chọn phương thức nhập/xuất")
     private String transactionType;
@@ -33,12 +37,29 @@ public class InventoryDTO {
 
     @NotNull(message = "Vui lòng chọn người dùng")
     private Integer userId;
+      // Thêm username để hiển thị
+    private String username;
+    
+    // Thêm thông tin thời gian giao dịch
+    private LocalDateTime transactionDate;
 
+    // Constructor từ InventoryTransaction entity
     public InventoryDTO(InventoryTransaction transaction) {
         this.bookId = transaction.getBook().getBookId();
+        this.bookTitle = transaction.getBook().getTitle();
         this.transactionType = transaction.getTransactionType();
-        this.quantity = transaction.getQuantity();
-        this.price = transaction.getPriceAtTransaction();
+        this.quantity = transaction.getQuantity();        this.price = transaction.getPriceAtTransaction();
         this.userId = transaction.getUser().getUserId();
+        this.username = transaction.getUser().getUsername();
+        this.transactionDate = transaction.getTransactionDate();
+    }
+
+    // Constructor cho việc tạo mới (không có entity)
+    public InventoryDTO(Integer bookId, String transactionType, Integer quantity, BigDecimal price, Integer userId) {
+        this.bookId = bookId;
+        this.transactionType = transactionType;
+        this.quantity = quantity;
+        this.price = price;
+        this.userId = userId;
     }
 }

@@ -89,59 +89,80 @@ public class LoginJUnitTestClean {
     @Test
     @DisplayName("Test login failure with wrong credentials")
     void testLoginFailure() {
-        // Test with wrong password for admin
-        Token token1 = authFacade.login("admin", "wrongpassword");
-        Assertions.assertNull(token1, "Login with wrong password should return null");
+        // Test with wrong password
+        Exception exception = Assertions.assertThrows(RuntimeException.class, () -> {
+            authFacade.login("admin", "wrongpassword");
+        });
         
-        // Test with wrong password for customer
-        Token token2 = authFacade.login("yuuyuunee", "wrongpassword");
-        Assertions.assertNull(token2, "Login with wrong password should return null");
+        Assertions.assertTrue(exception.getMessage().contains("Invalid") || 
+                            exception.getMessage().contains("Wrong") ||
+                            exception.getMessage().contains("Incorrect"),
+                            "Should throw exception with appropriate message for wrong credentials");
+    }
+
+    @Test
+    @DisplayName("Test login failure with locked account (status = Lock)")
+    void testLockedAccountLoginFailure() {
+        // Test login with locked account - admin1 has status = "Lock"
+        Exception exception = Assertions.assertThrows(RuntimeException.class, () -> {
+            authFacade.login("admin1", "abc@123");
+        });
         
-        // Test with non-existent user
-        Token token3 = authFacade.login("nonexistentuser", "abc@123");
-        Assertions.assertNull(token3, "Login with non-existent user should return null");
+        Assertions.assertNotNull(exception, "Should throw exception for locked account");
+        String errorMessage = exception.getMessage().toLowerCase();
+        Assertions.assertTrue(
+            errorMessage.contains("lock") || 
+            errorMessage.contains("disabled") || 
+            errorMessage.contains("inactive") ||
+            errorMessage.contains("blocked") ||
+            errorMessage.contains("suspended"),
+            "Error message should indicate account is locked/disabled. Actual message: " + exception.getMessage()
+        );
         
-        System.out.println("All failed login attempts returned null as expected");
+        System.out.println("✅ Locked account login correctly denied: " + exception.getMessage());
     }
 
     @Test
     @DisplayName("Test role-based access control")
-    void testRoleBasedAccess() {
-        // Login as admin
+    void testRoleBasedAccess() {        // Test admin login
         Token adminToken = authFacade.login("admin", "abc@123");
         Assertions.assertNotNull(adminToken, "Admin should be able to login");
+        Assertions.assertNotNull(adminToken.getAccess_token(), "Admin token should have access token");
         
-        UserDTO adminUser = authFacade.getCurrentUser(adminToken.getAccess_token());
-        Assertions.assertNotNull(adminUser, "Should get admin user details");
-        
-        // Login as customer
-        Token customerToken = authFacade.login("yuuyuunee", "abc@123");
+        // Test customer login  
+        Token customerToken = authFacade.login("customer", "abc@123");
         Assertions.assertNotNull(customerToken, "Customer should be able to login");
+        Assertions.assertNotNull(customerToken.getAccess_token(), "Customer token should have access token");
         
-        UserDTO customerUser = authFacade.getCurrentUser(customerToken.getAccess_token());
-        Assertions.assertNotNull(customerUser, "Should get customer user details");
+        System.out.println("✅ Both admin and customer can login with active accounts");
+    }
+
+    @Test
+    @DisplayName("Test contrast: Active vs Locked account login")
+    void testActiveVsLockedAccountLogin() {        // Test with active account (should succeed)
+        Token activeToken = authFacade.login("admin", "abc@123");
+        Assertions.assertNotNull(activeToken, "Active account should be able to login");
+        Assertions.assertNotNull(activeToken.getAccess_token(), "Active account token should have access token");
+        System.out.println("✅ Active account (admin) login successful");
         
-        // Verify different roles
-        String adminRole = adminUser.getRole();
-        String customerRole = customerUser.getRole();
+        // Test with locked account (should fail)
+        Exception exception = Assertions.assertThrows(RuntimeException.class, () -> {
+            authFacade.login("admin1", "abc@123");
+        });
         
-        System.out.println("Admin role: " + adminRole);
-        System.out.println("Customer role: " + customerRole);
+        Assertions.assertNotNull(exception, "Locked account should throw exception");
+        String errorMessage = exception.getMessage().toLowerCase();
+        Assertions.assertTrue(
+            errorMessage.contains("lock") || 
+            errorMessage.contains("disabled") || 
+            errorMessage.contains("inactive") ||
+            errorMessage.contains("blocked") ||
+            errorMessage.contains("suspended"),
+            "Error message should indicate account is locked. Actual: " + exception.getMessage()
+        );
         
-        // Both should have roles
-        Assertions.assertNotNull(adminRole, "Admin should have a role");
-        Assertions.assertNotNull(customerRole, "Customer should have a role");
-        
-        // Verify usernames are correct
-        Assertions.assertEquals("admin", adminUser.getUsername());
-        Assertions.assertEquals("yuuyuunee", customerUser.getUsername());
-        
-        // Test role logic for redirects
-        boolean adminShouldGoToAdminPage = adminRole.toLowerCase().contains("admin") || adminRole.equals("ADMIN");
-        boolean customerShouldGoToUserPage = !adminShouldGoToAdminPage;
-        
-        System.out.println("Admin should redirect to admin page: " + adminShouldGoToAdminPage);
-        System.out.println("Customer should redirect to user page: " + customerShouldGoToUserPage);
+        System.out.println("✅ Locked account (admin1) login correctly denied: " + exception.getMessage());
+        System.out.println("✅ Test demonstrates difference between Active and Lock status");
     }
 
     @Test

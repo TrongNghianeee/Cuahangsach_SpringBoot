@@ -1,5 +1,12 @@
 package com.example.bookstore.facade;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import com.example.bookstore.dto.BookImageDTO;
 import com.example.bookstore.dto.CategoryDTO;
 import com.example.bookstore.dto.InventoryDTO;
 import com.example.bookstore.dto.ProductDTO;
@@ -9,11 +16,6 @@ import com.example.bookstore.model.InventoryTransaction;
 import com.example.bookstore.service.BookService;
 import com.example.bookstore.service.CategoryService;
 import com.example.bookstore.service.InventoryService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-import com.example.bookstore.dto.BookImageDTO;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 public class ProductFacade {
@@ -148,15 +150,7 @@ public class ProductFacade {
                 .map(Category::getCategoryId)
                 .collect(Collectors.toList()) : null);
         return dto;
-    }
-
-    private InventoryDTO mapToInventoryDTO(InventoryTransaction transaction) {
-        return new InventoryDTO(
-                transaction.getBook().getBookId(),
-                transaction.getTransactionType(),
-                transaction.getQuantity(),
-                transaction.getPriceAtTransaction(),
-                transaction.getUser().getUserId()
-        );
+    }    private InventoryDTO mapToInventoryDTO(InventoryTransaction transaction) {
+        return new InventoryDTO(transaction);
     }
 }
