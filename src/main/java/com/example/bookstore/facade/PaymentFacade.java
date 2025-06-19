@@ -27,7 +27,6 @@ import com.example.bookstore.service.OrderService;
 import com.example.bookstore.service.PaymentService;
 import com.example.bookstore.service.ShoppingCartService;
 import com.example.bookstore.service.UserService;
-import com.example.bookstore.facade.ProductFacade;
 
 @Component
 public class PaymentFacade {
@@ -50,76 +49,71 @@ public class PaymentFacade {
     private ShoppingCartService shoppingCartService;
 
     @Autowired
-    private ProductFacade productFacade;
-
-    /**
+    private ProductFacade productFacade;    /**
      * Process checkout request - creates order, order details, and payment
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public CheckoutResponseDTO processCheckout(CheckoutRequestDTO checkoutRequest) {
-        try {
-            // 1. Validate user exists
-            User user = userService.getUserById(checkoutRequest.getUserId());
-            if (user == null) {
-                return new CheckoutResponseDTO(false, "Người dùng không tồn tại");
-            }
-
-            // 2. Validate items and stock availability
-            List<CheckoutItemDTO> items = checkoutRequest.getItems();
-            BigDecimal calculatedTotal = BigDecimal.ZERO;
-
-            for (CheckoutItemDTO item : items) {
-                Book book = bookService.getBookById(item.getBookId());
-                if (book == null) {
-                    return new CheckoutResponseDTO(false, "Sách với ID " + item.getBookId() + " không tồn tại");
-                }
-
-                // Check stock availability
-                if (book.getStockQuantity() < item.getQuantity()) {
-                    return new CheckoutResponseDTO(false,
-                            "Sách '" + book.getTitle() + "' không đủ số lượng trong kho. Còn lại: "
-                                    + book.getStockQuantity());
-                }
-
-                // Verify price
-                if (item.getPrice().compareTo(book.getPrice()) != 0) {
-                    return new CheckoutResponseDTO(false,
-                            "Giá sách '" + book.getTitle() + "' đã thay đổi. Vui lòng cập nhật giỏ hàng");
-                }
-
-                calculatedTotal = calculatedTotal.add(item.getSubtotal());
-            }
-
-            // 3. Verify total amount
-            if (calculatedTotal.compareTo(checkoutRequest.getTotalAmount()) != 0) {
-                return new CheckoutResponseDTO(false, "Tổng tiền không chính xác");
-            }
-
-            // 4. Create order
-            Order order = createOrder(user, checkoutRequest);
-
-            // 5. Create order details and update stock
-            List<OrderDetail> orderDetails = createOrderDetails(order, items);
-
-            // 6. Create payment record
-            Payment payment = createPayment(order, checkoutRequest.getPaymentMethod());
-
-            // 7. Clear shopping cart for user
-            shoppingCartService.clearCart(checkoutRequest.getUserId());
-
-            // 8. Prepare response
-            OrderDTO orderDTO = new OrderDTO(order);
-            orderDTO.setOrderDetails(orderDetails.stream()
-                    .map(OrderDetailDTO::new)
-                    .toList());
-
-            PaymentDTO paymentDTO = new PaymentDTO(payment);
-
-            return new CheckoutResponseDTO(true, "Đặt hàng thành công", orderDTO, paymentDTO);
-
-        } catch (Exception e) {
-            throw new RuntimeException("Lỗi khi xử lý đơn hàng: " + e.getMessage(), e);
+        // 1. Validate user exists
+        User user = userService.getUserById(checkoutRequest.getUserId());
+        if (user == null) {
+            throw new IllegalArgumentException("Người dùng không tồn tại");
         }
+
+        // 2. Validate items and stock availability
+        List<CheckoutItemDTO> items = checkoutRequest.getItems();
+        BigDecimal calculatedTotal = BigDecimal.ZERO;
+
+        for (CheckoutItemDTO item : items) {
+            Book book = bookService.getBookById(item.getBookId());
+            if (book == null) {
+                throw new IllegalArgumentException("Sách với ID " + item.getBookId() + " không tồn tại");
+            }            // Check stock availability
+            System.out.println("🔍 Validating stock for book: " + book.getTitle() + 
+                             ", Available: " + book.getStockQuantity() + 
+                             ", Requested: " + item.getQuantity());
+            
+            if (book.getStockQuantity() < item.getQuantity()) {
+                throw new IllegalArgumentException(
+                        "Sách '" + book.getTitle() + "' không đủ số lượng trong kho. Còn lại: "
+                                + book.getStockQuantity());
+            }
+
+            // Verify price
+            if (item.getPrice().compareTo(book.getPrice()) != 0) {
+                throw new IllegalArgumentException(
+                        "Giá sách '" + book.getTitle() + "' đã thay đổi. Vui lòng cập nhật giỏ hàng");
+            }
+
+            calculatedTotal = calculatedTotal.add(item.getSubtotal());
+        }
+
+        // 3. Verify total amount
+        if (calculatedTotal.compareTo(checkoutRequest.getTotalAmount()) != 0) {
+            throw new IllegalArgumentException("Tổng tiền không chính xác");
+        }
+
+        // 4. Create order
+        Order order = createOrder(user, checkoutRequest);
+
+        // 5. Create order details and update stock
+        List<OrderDetail> orderDetails = createOrderDetails(order, items);
+
+        // 6. Create payment record
+        Payment payment = createPayment(order, checkoutRequest.getPaymentMethod());
+
+        // 7. Clear shopping cart for user
+        shoppingCartService.clearCart(checkoutRequest.getUserId());
+
+        // 8. Prepare response
+        OrderDTO orderDTO = new OrderDTO(order);
+        orderDTO.setOrderDetails(orderDetails.stream()
+                .map(OrderDetailDTO::new)
+                .toList());
+
+        PaymentDTO paymentDTO = new PaymentDTO(payment);
+
+        return new CheckoutResponseDTO(true, "Đặt hàng thành công", orderDTO, paymentDTO);
     }
 
     /**
@@ -151,14 +145,15 @@ public class PaymentFacade {
             orderDetail.setOrder(order);
             orderDetail.setBook(book);
             orderDetail.setQuantity(item.getQuantity());
-            orderDetail.setPriceAtOrder(item.getPrice());
-
-            OrderDetail savedOrderDetail = orderDetailService.save(orderDetail);
+            orderDetail.setPriceAtOrder(item.getPrice());            OrderDetail savedOrderDetail = orderDetailService.save(orderDetail);
             orderDetails.add(savedOrderDetail);
 
-            // Update book stock
-            book.setStockQuantity(book.getStockQuantity() - item.getQuantity());
-            bookService.updateBookStock(book.getBookId(), book.getStockQuantity());
+            // DON'T update stock here - let InventoryService handle it to avoid double deduction
+            // The stock will be updated when creating inventory transactions
+            
+            System.out.println("📦 Order detail created for book: " + book.getTitle() + 
+                             ", Quantity: " + item.getQuantity() + 
+                             ", Current Stock: " + book.getStockQuantity());
 
             // Create inventory transaction DTO for "Xuất" (export)
             InventoryDTO inventoryDTO = new InventoryDTO(
@@ -166,18 +161,16 @@ public class PaymentFacade {
                     "Xuất", // Transaction type - export
                     item.getQuantity(),
                     item.getPrice(),
-                    order.getUser().getUserId());
-            inventoryDTOs.add(inventoryDTO);
-        }
-
-        // Create inventory transactions
+                    order.getUser().getUserId());            inventoryDTOs.add(inventoryDTO);
+            
+            System.out.println("📦 Created inventory DTO for book: " + book.getTitle() + 
+                             ", Transaction Quantity: " + item.getQuantity() + 
+                             ", Transaction Type: Xuất");
+        }        // Create inventory transactions
         if (!inventoryDTOs.isEmpty()) {
-            try {
-                productFacade.createInventoryTransactions(inventoryDTOs);
-            } catch (Exception e) {
-                // Log error but don't fail the order creation
-                System.err.println("Failed to create inventory transactions: " + e.getMessage());
-            }
+            System.out.println("📋 Creating " + inventoryDTOs.size() + " inventory transactions...");
+            productFacade.createInventoryTransactions(inventoryDTOs);
+            System.out.println("✅ Inventory transactions created successfully");
         }
 
         return orderDetails;

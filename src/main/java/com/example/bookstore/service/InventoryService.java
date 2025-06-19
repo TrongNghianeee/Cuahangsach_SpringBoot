@@ -41,16 +41,23 @@ public class InventoryService {
             if (!"Nhập".equalsIgnoreCase(inventoryDTO.getTransactionType()) && 
                 !"Xuất".equalsIgnoreCase(inventoryDTO.getTransactionType())) {
                 throw new IllegalArgumentException("Loại giao dịch không hợp lệ: " + inventoryDTO.getTransactionType());
-            }
-
-            // Update book stock quantity based on transaction type
+            }            // Update book stock quantity based on transaction type
+            int oldStock = book.getStockQuantity();
             if ("Nhập".equalsIgnoreCase(inventoryDTO.getTransactionType())) {
                 book.setStockQuantity(book.getStockQuantity() + inventoryDTO.getQuantity());
+                System.out.println("📈 NHẬP - Book: " + book.getTitle() + 
+                                 ", Old Stock: " + oldStock + 
+                                 ", +Quantity: " + inventoryDTO.getQuantity() + 
+                                 ", New Stock: " + book.getStockQuantity());
             } else {
                 if (book.getStockQuantity() < inventoryDTO.getQuantity()) {
                     throw new IllegalArgumentException("Số lượng tồn kho không đủ cho sách ID: " + inventoryDTO.getBookId());
                 }
                 book.setStockQuantity(book.getStockQuantity() - inventoryDTO.getQuantity());
+                System.out.println("📉 XUẤT - Book: " + book.getTitle() + 
+                                 ", Old Stock: " + oldStock + 
+                                 ", -Quantity: " + inventoryDTO.getQuantity() + 
+                                 ", New Stock: " + book.getStockQuantity());
             }
 
             InventoryTransaction transaction = new InventoryTransaction();
@@ -59,10 +66,12 @@ public class InventoryService {
             transaction.setQuantity(inventoryDTO.getQuantity());
             transaction.setPriceAtTransaction(inventoryDTO.getPrice());
             transaction.setUser(user);
-            transaction.setTransactionDate(LocalDateTime.now());
-
-            bookRepository.save(book);
-            transactions.add(inventoryTransactionRepository.save(transaction));
+            transaction.setTransactionDate(LocalDateTime.now());            bookRepository.save(book);
+            InventoryTransaction savedTransaction = inventoryTransactionRepository.save(transaction);
+            transactions.add(savedTransaction);
+            
+            System.out.println("✅ Transaction saved with ID: " + savedTransaction.getTransactionId() + 
+                             ", Final stock for book " + book.getTitle() + ": " + book.getStockQuantity());
         }
         return transactions;
     }
@@ -131,10 +140,15 @@ public class InventoryService {
                 book.setStockQuantity(book.getStockQuantity() - transaction.getQuantity());
             } else if ("Xuất".equalsIgnoreCase(transaction.getTransactionType())) {
                 book.setStockQuantity(book.getStockQuantity() + transaction.getQuantity());
-            }
-
-            bookRepository.save(book);
+            }            bookRepository.save(book);
             inventoryTransactionRepository.deleteById(id);
         }
+    }
+
+    /**
+     * Check if a book has any inventory transactions (for deletion validation)
+     */
+    public boolean hasInventoryTransactionsByBookId(Integer bookId) {
+        return inventoryTransactionRepository.existsByBookBookId(bookId);
     }
 }

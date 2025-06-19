@@ -24,8 +24,12 @@ public interface InventoryTransactionRepository extends JpaRepository<InventoryT
            "WHERE it.book.bookId = :bookId " +
            "ORDER BY it.transactionDate DESC")
     List<InventoryTransaction> findByBookIdWithDetails(@Param("bookId") Integer bookId);
-    
-    @Query("SELECT COALESCE(SUM(CASE WHEN it.transactionType = 'Nhập' THEN it.quantity ELSE -it.quantity END), 0) " +
+      @Query("SELECT COALESCE(SUM(CASE WHEN it.transactionType = 'Nhập' THEN it.quantity ELSE -it.quantity END), 0) " +
            "FROM InventoryTransaction it WHERE it.book.bookId = :bookId")
     Integer calculateCurrentStock(@Param("bookId") Integer bookId);
+    
+    /**
+     * Check if there are any inventory transactions for a specific book
+     */
+    boolean existsByBookBookId(Integer bookId);
 }

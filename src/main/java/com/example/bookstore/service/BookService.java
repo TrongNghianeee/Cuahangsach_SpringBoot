@@ -22,10 +22,11 @@ public class BookService {
     private BookRepository bookRepository;
 
     @Autowired
-    private CategoryService categoryService;
+    private CategoryService categoryService;    @Autowired
+    private BookImageService bookImageService;
 
     @Autowired
-    private BookImageService bookImageService;
+    private InventoryService inventoryService;
 
     public List<Book> getAllBooks() {
         List<Book> books = bookRepository.findAllWithCategories();
@@ -116,15 +117,23 @@ public class BookService {
         }
 
         return bookRepository.save(book);
-    }
-
-    @Transactional
+    }    @Transactional
     public void deleteBook(Integer bookId) {
-        if (!bookRepository.existsById(bookId)) {
-            throw new IllegalArgumentException("Sách không tồn tại");
-        }
+        // Kiểm tra sách có tồn tại không
+        Book book = bookRepository.findById(bookId)
+            .orElseThrow(() -> new IllegalArgumentException("Sách không tồn tại với ID: " + bookId));
+        
+        // Validate điều kiện xóa sách
+        validateBookDeletion(book);
+        
+        // Nếu tất cả điều kiện đều thỏa mãn, tiến hành xóa
+        // Xóa ảnh liên quan trước
         bookImageService.deleteImagesByBookId(bookId);
+        
+        // Xóa sách
         bookRepository.deleteById(bookId);
+        
+        System.out.println("✅ Đã xóa thành công sách: " + book.getTitle() + " (ID: " + bookId + ")");
     }
 
     public List<Book> searchBooks(String keyword) {
@@ -145,9 +154,33 @@ public class BookService {
         
         book.setStockQuantity(newStockQuantity);
         bookRepository.save(book);
-    }
-
-    public Long getTotalBookCount() {
+    }    public Long getTotalBookCount() {
         return bookRepository.count();
+    }
+    
+    /**
+     * Validate if a book can be deleted
+     * @param book The book to validate
+     * @throws IllegalArgumentException if book cannot be deleted
+     */
+    private void validateBookDeletion(Book book) {
+        // Kiểm tra điều kiện 1: Số lượng tồn kho phải bằng 0
+        if (book.getStockQuantity() != null && book.getStockQuantity() > 0) {
+            throw new IllegalArgumentException(
+                String.format("Không thể xóa sách '%s' vì vẫn còn %d cuốn trong kho. " +
+                             "Vui lòng xuất hết sách khỏi kho trước khi xóa.", 
+                             book.getTitle(), book.getStockQuantity())
+            );
+        }
+        
+        // Kiểm tra điều kiện 2: Sách không có trong inventory_transactions
+        boolean hasInventoryTransactions = inventoryService.hasInventoryTransactionsByBookId(book.getBookId());
+        if (hasInventoryTransactions) {
+            throw new IllegalArgumentException(
+                String.format("Không thể xóa sách '%s' vì đã có lịch sử nhập/xuất kho. " +
+                             "Sách này đã từng được giao dịch trong hệ thống.", 
+                             book.getTitle())
+            );
+        }
     }
 }

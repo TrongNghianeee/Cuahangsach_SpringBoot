@@ -127,9 +127,9 @@ public class ProductFacade {
         if (inventoryService.getInventoryTransactionById(id) == null) {
             throw new IllegalArgumentException("Giao dịch kho không tồn tại");
         }
-        inventoryService.deleteInventoryTransaction(id);
-    }
+        inventoryService.deleteInventoryTransaction(id);    }
 
+    // Helper mapping methods
     private ProductDTO mapToProductDTO(Book book) {
         ProductDTO dto = new ProductDTO();
         dto.setBookId(book.getBookId());

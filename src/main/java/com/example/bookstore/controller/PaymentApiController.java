@@ -39,9 +39,7 @@ public class PaymentApiController {
     private PaymentFacade paymentFacade;
 
     @Autowired
-    private AuthFacade authFacade;
-
-    /**
+    private AuthFacade authFacade;    /**
      * POST /api/user/payment/checkout - Process checkout request
      * Creates order, order details, and payment records
      */
@@ -51,18 +49,14 @@ public class PaymentApiController {
             CheckoutResponseDTO result = paymentFacade.processCheckout(checkoutRequest);
             
             Map<String, Object> response = new HashMap<>();
-            response.put("success", result.isSuccess());
+            response.put("success", true);
             response.put("message", result.getMessage());
             
-            if (result.isSuccess()) {
-                Map<String, Object> data = new HashMap<>();
-                data.put("order", result.getOrder());
-                data.put("payment", result.getPayment());
-                response.put("data", data);
-                return ResponseEntity.ok(response);
-            } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-            }
+            Map<String, Object> data = new HashMap<>();
+            data.put("order", result.getOrder());
+            data.put("payment", result.getPayment());
+            response.put("data", data);
+            return ResponseEntity.ok(response);
             
         } catch (IllegalArgumentException e) {
             Map<String, Object> response = new HashMap<>();
