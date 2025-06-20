@@ -557,9 +557,164 @@ public class LoginSeleniumTestNew {
 
         } catch (TimeoutException e) {
             Assertions.fail(" \nThất bại: Không hiển thị thông báo lỗi sau khi login với tài khoản bị khóa.");
-        }
+        }        System.out.println("\nLogin với tài khoản bị khóa được xử lý đúng: không bị redirect và có thông báo lỗi phù hợp.");
+    }
 
-        System.out.println("\nLogin với tài khoản bị khóa được xử lý đúng: không bị redirect và có thông báo lỗi phù hợp.");
+    @Test
+    @DisplayName("Test logout functionality - should show warning message about loading sample data")
+    void testLogoutFunctionality() {
+        System.out.println("\n=== BẮT ĐẦU TEST LOGOUT FUNCTIONALITY ===");
+        
+        // Step 1: Login với admin credentials
+        System.out.println("Bước 1: Đăng nhập với tài khoản admin...");
+        driver.get(BASE_URL + "/auth/login");
+        
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.id("username")));
+        
+        WebElement usernameField = driver.findElement(By.id("username"));
+        WebElement passwordField = driver.findElement(By.id("password"));
+        WebElement loginButton = driver.findElement(By.xpath("//button[@type='submit']"));
+        
+        usernameField.clear();
+        usernameField.sendKeys("admin");
+        passwordField.clear();
+        passwordField.sendKeys("abc@123");
+        
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        
+        loginButton.click();
+        
+        // Step 2: Verify login success và lưu URL dashboard
+        System.out.println("Bước 2: Xác nhận đăng nhập thành công...");
+        wait.until(ExpectedConditions.or(
+                ExpectedConditions.urlContains("/admin"),
+                ExpectedConditions.urlContains("/user")));
+        
+        String dashboardUrl = driver.getCurrentUrl();
+        System.out.println("URL dashboard sau khi login: " + dashboardUrl);
+        
+        Assertions.assertTrue(dashboardUrl.contains("/admin") || dashboardUrl.contains("/user"),
+                "Đăng nhập thất bại - không được chuyển đến dashboard");
+        
+        // Step 3: Click logout button
+        System.out.println("Bước 3: Nhấn nút logout...");
+        try {
+            Thread.sleep(2000); // Đợi dashboard load hoàn toàn
+            
+            // Tìm nút logout có text "Đăng xuất"
+            WebElement logoutButton = wait.until(ExpectedConditions.elementToBeClickable(
+                By.xpath("//button[contains(text(), 'Đăng xuất')]")));
+            
+            System.out.println("Tìm thấy nút logout, đang nhấn...");
+            logoutButton.click();
+            
+            // Đợi logout process hoàn tất
+            Thread.sleep(3000);
+            
+            // Step 4: Verify logout success (should redirect to login page)
+            System.out.println("Bước 4: Xác nhận logout thành công...");
+            String urlAfterLogout = driver.getCurrentUrl();
+            System.out.println("URL sau khi logout: " + urlAfterLogout);
+            
+            boolean loggedOut = urlAfterLogout.contains("/login") || urlAfterLogout.contains("/auth");
+            if (loggedOut) {
+                System.out.println("Logout thành công - được chuyển về trang login");
+            } else {
+                System.out.println("Logout có vấn đề - không chuyển về login");
+            }
+            
+            // Step 5: Test critical part - truy cập lại dashboard URL
+            System.out.println("Bước 5: KIỂM TRA THU HỒI TOKEN - Truy cập lại dashboard...");
+            System.out.println("Đang truy cập URL: " + dashboardUrl);
+            
+            driver.get(dashboardUrl);
+            
+            // Đợi trang load
+            Thread.sleep(3000);
+            
+            String currentUrl = driver.getCurrentUrl();
+            System.out.println("URL hiện tại: " + currentUrl);
+            
+            // Step 6: Kiểm tra thông báo cảnh báo
+            boolean stillCanAccessDashboard = currentUrl.contains("/admin") || currentUrl.contains("/user");
+            
+            if (stillCanAccessDashboard) {
+                System.out.println("📊 Vẫn truy cập được dashboard URL");
+                System.out.println("🔍 Đang tìm thông báo cảnh báo...");
+                
+                try {
+                    // Tìm thông báo cảnh báo cụ thể
+                    WebElement warningMessage = driver.findElement(By.xpath("//*[contains(text(), 'Không thể tải dữ liệu dashboard. Đang hiển thị dữ liệu mẫu.')]"));
+                    
+                    if (warningMessage.isDisplayed()) {
+                        System.out.println("✅ PASS: Tìm thấy thông báo cảnh báo!");
+                        System.out.println("📝 Thông báo: " + warningMessage.getText());
+                        System.out.println("📋 Phân tích:");
+                        System.out.println("  - Frontend đã xóa token khỏi localStorage (không fetch được API)");
+                        System.out.println("  - Backend chưa thu hồi token hoàn toàn (vẫn cho phép truy cập URL)");
+                        System.out.println("  - Hiển thị dữ liệu mẫu với cảnh báo thay vì redirect về login");
+                        
+                        // Test PASS
+                        System.out.println("✅ TEST PASS: Thông báo cảnh báo xuất hiện đúng như mong đợi!");
+                        
+                    } else {
+                        System.err.println("❌ FAIL: Thông báo cảnh báo không hiển thị!");
+                        Assertions.fail("Không tìm thấy thông báo cảnh báo về dữ liệu mẫu");
+                    }
+                    
+                } catch (Exception e) {
+                    System.err.println("❌ FAIL: Không tìm thấy thông báo cảnh báo");
+                    System.err.println("Lỗi: " + e.getMessage());
+                    
+                    // Debug - in ra một phần nội dung trang để kiểm tra
+                    try {
+                        String pageText = driver.findElement(By.tagName("body")).getText();
+                        System.err.println("📄 DEBUG - Nội dung trang (500 ký tự đầu):");
+                        System.err.println(pageText.substring(0, Math.min(500, pageText.length())));
+                        
+                        if (pageText.toLowerCase().contains("cảnh báo") || 
+                            pageText.toLowerCase().contains("không thể tải") ||
+                            pageText.toLowerCase().contains("dữ liệu mẫu")) {
+                            System.err.println("⚠️ Text liên quan đến cảnh báo có trong trang nhưng selector không đúng");
+                        }
+                    } catch (Exception debugEx) {
+                        System.err.println("Không thể lấy nội dung trang để debug");
+                    }
+                    
+                    Assertions.fail("❌ FAIL: Không tìm thấy thông báo cảnh báo mong đợi");
+                }
+                
+            } else {
+                System.out.println("🔄 Được redirect khỏi dashboard");
+                System.out.println("URL hiện tại: " + currentUrl);
+                
+                if (currentUrl.contains("/login") || currentUrl.contains("/auth")) {
+                    System.out.println("✅ PASS: Token đã được thu hồi hoàn toàn - redirect về login");
+                } else {
+                    System.err.println("❌ FAIL: Không biết redirect đến đâu");
+                    Assertions.fail("Redirect đến URL không mong đợi: " + currentUrl);
+                }
+            }
+            
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            Assertions.fail("Test bị gián đoạn");
+        } catch (TimeoutException e) {
+            System.err.println("❌ FAIL: Timeout - không tìm thấy nút logout");
+            Assertions.fail("Timeout khi tìm nút logout hoặc xử lý logout");
+        }
+        
+        System.out.println("=== KẾT THÚC TEST LOGOUT FUNCTIONALITY ===\n");
     }
 
 

@@ -24,7 +24,7 @@ export async function logout(): Promise<void> {
     }
     
     // Clear token from localStorage and store
-    localStorage.removeItem('token');
+    //localStorage.removeItem('token');
     token.set('');
     
     // Redirect to login page

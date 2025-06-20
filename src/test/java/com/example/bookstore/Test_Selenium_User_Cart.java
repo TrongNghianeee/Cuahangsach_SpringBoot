@@ -1,7 +1,19 @@
 package com.example.bookstore;
 
-import io.github.bonigarcia.wdm.WebDriverManager;
-import org.junit.jupiter.api.*;
+//import io.github.bonigarcia.wdm.WebDriverManager;
+import java.time.Duration;
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -9,11 +21,6 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-
-import java.time.Duration;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class Test_Selenium_User_Cart {
@@ -111,20 +118,43 @@ public class Test_Selenium_User_Cart {
                 By.xpath("//h3[contains(text(), 'Sapiens: Lược sử loài người')]")));
         WebElement sapiensItem = driver.findElement(By.xpath("//h3[contains(text(), 'Sapiens: Lược sử loài người')]"));
         assertNotNull(sapiensItem, "Item 'Sapiens: Lược sử loài người' should be added to cart");
-    }
-
-    @Test
+    }    @Test
     @Order(2)
     @DisplayName("TC2: User views cart list")
     void testUserViewsCartList() {
-        // Log in and navigate to cart page
+        // Log in and add item to cart first to ensure cart has content
         login("hehe", "@hehe123");
+        
+        // Add item to cart to ensure we have something to view
+        driver.get(BASE_URL + "/user");
+        WebElement addToCartButton = wait.until(ExpectedConditions.elementToBeClickable(
+                By.xpath("//button[contains(text(), 'Thêm vào giỏ')]")));
+        addToCartButton.click();
+
+        // Handle the alert
+        try {
+            WebDriverWait waitForAlert = new WebDriverWait(driver, Duration.ofSeconds(2));
+            waitForAlert.until(ExpectedConditions.alertIsPresent());
+            driver.switchTo().alert().accept();
+            Thread.sleep(1000);
+        } catch (Exception e) {
+            // If no alert is present, continue
+        }
+
+        try {
+            Thread.sleep(3000); // Delay to allow server to process add to cart
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Now navigate to cart page and verify cart list is displayed
         driver.get(BASE_URL + "/user/Cart");
         try {
             Thread.sleep(3000);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+        
         // Verify cart list is displayed
         List<WebElement> cartItems = wait.until(ExpectedConditions.presenceOfAllElementsLocatedBy(
                 By.xpath("//li[contains(@class, 'px-6')]/div")));
@@ -170,70 +200,43 @@ public class Test_Selenium_User_Cart {
         }
 
         wait.until(ExpectedConditions.stalenessOf(firstRemove));
-    }
-
-    @Test
+    }    @Test
     @Order(4)
     @DisplayName("TC4: User updates item quantity in cart")
     void testUpdatesItemQuantityInCart() {
-        // Log in and navigate to cart page
+        // Log in and add item to cart first to ensure cart has content
         login("hehe", "@hehe123");
-        driver.get(BASE_URL + "/user/Cart");
-        //check if cart has item or not
-        // List<WebElement> removeButtons = driver.findElements(By.xpath("//button[contains(., 'Xóa')]"));
+        
+        // Add item to cart to ensure we have something to update
+        driver.get(BASE_URL + "/user");
+        WebElement addToCartButton = wait.until(ExpectedConditions.elementToBeClickable(
+                By.xpath("//button[contains(text(), 'Thêm vào giỏ')]")));
+        addToCartButton.click();
 
-        // if (!removeButtons.isEmpty()) {
-        //     System.out.println("Cart has items, removing them...");
+        // Handle the alert
+        try {
+            WebDriverWait waitForAlert = new WebDriverWait(driver, Duration.ofSeconds(2));
+            waitForAlert.until(ExpectedConditions.alertIsPresent());
+            driver.switchTo().alert().accept();
+            Thread.sleep(1000);
+        } catch (Exception e) {
+            // If no alert is present, continue
+        }
 
-        //     // Remove all 'Xóa' buttons one by one
-        //     while (true) {
-        //         List<WebElement> buttons = driver.findElements(By.xpath("//button[contains(., 'Xóa')]"));
-        //         if (buttons.isEmpty()) break;
-                
-        //         WebElement firstRemove = wait.until(ExpectedConditions.elementToBeClickable(
-        //             By.xpath("//button[contains(., 'Xóa')]")
-        //         ));
-        //         firstRemove.click();
+        try {
+            Thread.sleep(3000); // Delay to allow server to process add to cart
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
-        //         // Wait for it to disappear
-        //         wait.until(ExpectedConditions.stalenessOf(firstRemove));
-        //         try {
-        //             Thread.sleep(3000);
-        //         } catch (InterruptedException e) {
-        //             Thread.currentThread().interrupt();
-        //         }
-        //     }
-        // } else {
-        //     System.out.println("Cart was already empty.");
-        // }
-
-    
-        // driver.get(BASE_URL + "/user");
-        //  try {
-        //     Thread.sleep(3000);
-        // } catch (InterruptedException e) {
-        //     Thread.currentThread().interrupt();
-        // }
-        // WebElement addToCartButton = wait.until(ExpectedConditions.elementToBeClickable(
-        //         By.xpath("//button[contains(text(), 'Thêm vào giỏ')]")));
-        // addToCartButton.click();
-
-        // // Handle the alert
-        // try {
-        //     WebDriverWait waitForAlert = new WebDriverWait(driver, Duration.ofSeconds(2));
-        //     waitForAlert.until(ExpectedConditions.alertIsPresent());
-        //     driver.switchTo().alert().accept(); // Accept the alert
-        //     Thread.sleep(3000); // Short delay after accepting alert
-        // } catch (Exception e) {
-        //     // If no alert is present, continue (optional: log or handle differently)
-        // }
-
+        // Now navigate to cart page and test quantity update
         driver.get(BASE_URL + "/user/Cart");
         try {
             Thread.sleep(3000);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+        
         String bookTitle = "Sapiens: Lược sử loài người";
         WebElement title = wait.until(ExpectedConditions.presenceOfElementLocated(
             By.xpath("//h3[contains(text(), '" + bookTitle + "')]")
