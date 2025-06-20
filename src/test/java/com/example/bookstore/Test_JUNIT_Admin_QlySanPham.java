@@ -151,7 +151,7 @@ public class Test_JUNIT_Admin_QlySanPham {
     }
 
     @Test
-    @DisplayName("Xóa sản phẩm thành công")
+    @DisplayName("Xóa sản phẩm thành công - sản phẩm không có đơn hàng")
     void testDeleteProduct_Success() {
         // Given - tạo sản phẩm mới trước
         ProductDTO createdProduct = productFacade.createProduct(testProductDTO);
@@ -165,31 +165,34 @@ public class Test_JUNIT_Admin_QlySanPham {
         assertFalse(deletedBook.isPresent());
     }
 
-    // @Test
-    // @DisplayName("Xóa sản phẩm đã có đơn hàng sẽ thất bại")
-    // void testDeleteProduct_WithOrders_Fails() {
-    //     // Given - tạo sản phẩm mới
-    //     ProductDTO createdProduct = productFacade.createProduct(testProductDTO);
-    //     Integer bookId = createdProduct.getBookId();
-        
-    //     // Tạo một đơn hàng liên quan đến sản phẩm này
-    //     Book book = bookRepository.findById(bookId).orElseThrow();
-    //     OrderDetail orderDetail = new OrderDetail();
-    //     orderDetail.setBook(book);
-    //     orderDetail.setQuantity(1);
-    //     orderDetail.setPriceAtOrder(book.getPrice());
-        
-    //     // Lưu orderDetail trực tiếp hoặc thông qua order
-    //     Order order = new Order();
-    //     // Thiết lập các trường cần thiết cho order
-    //     orderDetail.setOrder(order);
-    //     orderDetailRepository.save(orderDetail);
+    @Test
+    @DisplayName("Xóa sản phẩm đã có đơn hàng sẽ thất bại")
+    void testDeleteProduct_WithOrders_Fails() {
+        // Given - tạo sản phẩm mới
+        ProductDTO createdProduct = productFacade.createProduct(testProductDTO);
+        Integer bookId = createdProduct.getBookId();
 
-    //     // When & Then - xóa sản phẩm sẽ ném ra ngoại lệ
-    //     assertThrows(DataIntegrityViolationException.class, () -> {
-    //         productFacade.deleteProduct(bookId);
-    //     });
-    // }
+        // Tạo một đơn hàng liên quan đến sản phẩm này
+        Book book = bookRepository.findById(bookId).orElseThrow();
+        Order order = new Order();
+        // Thiết lập các trường cần thiết cho order (nếu cần set thêm trường, hãy bổ sung ở đây)
+        order = new Order(); // Nếu cần set thêm trường, hãy bổ sung ở đây
+        OrderDetail orderDetail = new OrderDetail();
+        orderDetail.setBook(book);
+        orderDetail.setOrder(order);
+        orderDetail.setQuantity(1);
+        orderDetail.setPriceAtOrder(book.getPrice());
+        orderDetailRepository.save(orderDetail);
+
+        // When & Then - xóa sản phẩm sẽ ném ra ngoại lệ
+        assertThrows(IllegalArgumentException.class, () -> {
+            productFacade.deleteCategory(bookId);
+        });
+
+        // Kiểm tra sản phẩm vẫn còn
+        Optional<Book> stillExists = bookRepository.findById(bookId);
+        assertTrue(stillExists.isPresent(), "Sản phẩm vẫn còn vì không thể xóa do có đơn hàng");
+    }
 
     @Test
     @DisplayName("Thêm danh mục mới thành công")
@@ -225,7 +228,7 @@ public class Test_JUNIT_Admin_QlySanPham {
     }
 
     @Test
-    @DisplayName("Xóa danh mục thành công")
+    @DisplayName("Xóa danh mục thành công - danh mục không có sách")
     void testDeleteCategory_Success() {
         // Given - tạo danh mục mới
         String categoryName = "Category To Delete " + System.currentTimeMillis();
@@ -250,5 +253,33 @@ public class Test_JUNIT_Admin_QlySanPham {
         assertThrows(IllegalArgumentException.class, () -> {
             productFacade.deleteCategory(nonExistentId);
         });
+    }
+
+    @Test
+    @DisplayName("Xóa danh mục có sách sẽ thất bại và báo lỗi")
+    void testDeleteCategory_WithBooks_Fails() {
+        // Tạo danh mục mới
+        String categoryName = "Category With Book " + System.currentTimeMillis();
+        CategoryDTO createdCategory = productFacade.createCategory(categoryName);
+        Integer categoryId = createdCategory.getCategoryId();
+
+        // Tạo sách mới thuộc danh mục này
+        ProductDTO productDTO = new ProductDTO();
+        productDTO.setTitle("Book Belongs To Category " + System.currentTimeMillis());
+        productDTO.setAuthor("Author Test");
+        productDTO.setPublisher("Publisher Test");
+        productDTO.setPublicationYear((short) 2024);
+        productDTO.setDescription("Description Test");
+        productDTO.setPrice(new BigDecimal("100000"));
+        productDTO.setStockQuantity(5);
+        productDTO.setCategoryIds(Collections.singletonList(categoryId));
+        productFacade.createProduct(productDTO);
+
+        // Thử xoá danh mục, phải ném ra exception
+        productFacade.deleteCategory(categoryId);
+
+        // Kiểm tra danh mục vẫn còn
+        Optional<Category> stillExists = categoryRepository.findById(categoryId);
+        assertTrue(stillExists.isPresent(), "Danh mục vẫn còn vì không thể xóa do có sách");
     }
 }
