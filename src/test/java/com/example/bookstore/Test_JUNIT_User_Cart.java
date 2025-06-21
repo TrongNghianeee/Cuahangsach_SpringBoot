@@ -24,7 +24,7 @@ public class Test_JUNIT_User_Cart {
     private ShoppingCartRepository shoppingCartRepository;
 
     private Integer userId = 4;
-    private Integer bookId = 1;
+    private Integer bookId = 16;
 
     @BeforeAll
     static void setupClass() {
@@ -50,8 +50,8 @@ public class Test_JUNIT_User_Cart {
         bookRepository.save(book);
 
         Exception exception = assertThrows(IllegalArgumentException.class,
-            () -> shoppingCartService.addToCart(userId, bookId),
-            "Should throw for out-of-stock book");
+                () -> shoppingCartService.addToCart(userId, bookId),
+                "Should throw for out-of-stock book");
 
         System.out.println("Exception message: " + exception.getMessage());
         assertTrue(exception.getMessage().toLowerCase().contains("out of stock"));
@@ -65,26 +65,26 @@ public class Test_JUNIT_User_Cart {
         book.setStockQuantity(5);
         bookRepository.save(book);
 
-        // Ensure item is in cart
-        shoppingCartRepository.deleteAll();
+        // Clear only this user's cart and ensure item is in cart
+        shoppingCartRepository.deleteAllByUserId(userId);
         shoppingCartService.addToCart(userId, bookId);
 
         Exception exception = assertThrows(IllegalArgumentException.class,
-            () -> shoppingCartService.addToCart(userId, bookId),
-            "Should throw when adding duplicate item");
+                () -> shoppingCartService.addToCart(userId, bookId),
+                "Should throw when adding duplicate item");
 
         System.out.println("Exception message: " + exception.getMessage());
         assertTrue(exception.getMessage().toLowerCase().contains("already in the cart"));
     }
 
-    @Test   
+    @Test
     @DisplayName("Test removeFromCart with non-existing item should fail")
     void testRemoveFromCartItemNotFound() {
         Integer nonExistingBookId = 9999;
 
         Exception exception = assertThrows(IllegalArgumentException.class,
-            () -> shoppingCartService.removeFromCart(userId, nonExistingBookId),
-            "Should throw for non-existing cart item");
+                () -> shoppingCartService.removeFromCart(userId, nonExistingBookId),
+                "Should throw for non-existing cart item");
 
         System.out.println("Exception message: " + exception.getMessage());
         assertTrue(exception.getMessage().toLowerCase().contains("not found"));
@@ -93,15 +93,11 @@ public class Test_JUNIT_User_Cart {
     @Test
     @DisplayName("Test getCartItemCount returns correct number")
     void testGetCartItemCount() {
-        // Clear cart & add 2 books
-        shoppingCartRepository.deleteAll();
+        // Clear only this user's cart & add 2 books
+        shoppingCartRepository.deleteAllByUserId(userId);
 
         Book book1 = bookRepository.findById(1).orElseThrow();
         Book book2 = bookRepository.findById(2).orElseThrow();
-        book1.setStockQuantity(5);
-        book2.setStockQuantity(5);
-        bookRepository.save(book1);
-        bookRepository.save(book2);
 
         shoppingCartService.addToCart(userId, 1);
         shoppingCartService.addToCart(userId, 2);
@@ -111,10 +107,10 @@ public class Test_JUNIT_User_Cart {
         assertEquals(2, count);
     }
 
-    @Test   
+    @Test
     @DisplayName("Test isBookInCart returns true/false correctly")
     void testIsBookInCart() {
-        shoppingCartRepository.deleteAll();
+        shoppingCartRepository.deleteAllByUserId(userId);
 
         Book book = bookRepository.findById(bookId).orElseThrow();
         book.setStockQuantity(5);

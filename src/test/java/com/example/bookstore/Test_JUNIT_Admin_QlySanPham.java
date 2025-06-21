@@ -61,7 +61,7 @@ public class Test_JUNIT_Admin_QlySanPham {
         testProductDTO.setPublicationYear((short) 2023);
         testProductDTO.setDescription("Test Description");
         testProductDTO.setPrice(new BigDecimal("150000"));
-        testProductDTO.setStockQuantity(10);
+        testProductDTO.setStockQuantity(0);
         testProductDTO.setCategoryIds(Collections.singletonList(testCategory.getCategoryId()));
     }
 
